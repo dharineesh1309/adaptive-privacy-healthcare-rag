@@ -1,0 +1,97 @@
+{
+  "risk": {
+    "base_score": 0.15,
+    "thresholds": {
+      "low_max": 0.35,
+      "high_min": 0.70
+    },
+    "weights": {
+      "query": 0.55,
+      "document": 0.30,
+      "role": 0.15
+    },
+    "forced_high_patterns": [
+      "repeat the context",
+      "complete record",
+      "list all personal information",
+      "reveal everything",
+      "ignore privacy",
+      "exact personal details",
+      "full private record"
+    ],
+    "pattern_groups": [
+      {
+        "label": "Direct identifier request",
+        "weight": 0.55,
+        "terms": [
+          "phone number",
+          "email address",
+          "home address",
+          "account number",
+          "aadhaar",
+          "social security",
+          "full name"
+        ]
+      },
+      {
+        "label": "Sensitive subject",
+        "weight": 0.25,
+        "terms": [
+          "diagnosis",
+          "treatment",
+          "medication",
+          "prescribed",
+          "medical record",
+          "salary",
+          "income",
+          "bank balance",
+          "account balance"
+        ]
+      },
+      {
+        "label": "Person-specific request",
+        "weight": 0.20,
+        "terms": [
+          "patient",
+          "customer",
+          "employee",
+          "individual",
+          "person-specific"
+        ]
+      },
+      {
+        "label": "General-information intent",
+        "weight": -0.20,
+        "terms": [
+          "what is",
+          "explain",
+          "in general",
+          "commonly",
+          "general information"
+        ]
+      },
+      {
+        "label": "Aggregate intent",
+        "weight": -0.10,
+        "terms": [
+          "average",
+          "overall trend",
+          "aggregate",
+          "how many"
+        ]
+      }
+    ]
+  },
+  "roles": {
+    "public": 1.0,
+    "guest": 1.0,
+    "patient": 0.6,
+    "customer": 0.6,
+    "doctor": 0.2,
+    "admin": 0.2,
+    "unknown": 1.0
+  },
+  "retrieval": {
+    "top_k": 2
+  }
+}

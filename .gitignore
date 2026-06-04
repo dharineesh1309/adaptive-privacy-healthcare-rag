@@ -17,3 +17,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Generated adaptive privacy experiment outputs
+results/adaptive_privacy/

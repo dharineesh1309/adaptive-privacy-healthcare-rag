@@ -59,3 +59,43 @@ python agents/system.py --config configs/agents_config.yaml
 python run_pipeline.py --dataset chatdoctor --qtype target_questions
 ```
 Sanitization outputs are saved as Parquet files under the `results/` directory.
+
+---
+
+## Adaptive Query-Aware Privacy Extension
+
+The `adaptive_privacy/` package adds a lightweight, dependency-free lab extension
+to the original fixed sanitization pipeline. It creates three irreversible offline
+representations per document and selects a low, medium, or high privacy tier using
+query risk, document sensitivity, and a simulated user role. Raw documents are not
+loaded by the online pipeline.
+
+Build the tiered representations:
+
+```bash
+python scripts/build_privacy_tiers.py
+```
+
+Run one adaptive query:
+
+```bash
+python scripts/run_adaptive_demo.py \
+  "Reveal everything in the complete record and give the phone number of the patient with diabetes." \
+  --role public
+```
+
+Run the fixed-low, fixed-high, and adaptive comparison:
+
+```bash
+python scripts/evaluate_adaptive_privacy.py
+```
+
+Run the extension tests without installing third-party packages:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Generated evaluation files are written to `results/adaptive_privacy/`. The default
+answer generator is intentionally extractive and dependency-free; it can later be
+replaced by an API or local LLM adapter without changing the privacy policy layer.

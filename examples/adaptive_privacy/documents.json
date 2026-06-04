@@ -1,0 +1,42 @@
+[
+  {
+    "document_id": "MED-001",
+    "text": "Patient John Smith, age 47, lives at 23 Green Road and lives in Mysuru. He was diagnosed with diabetes on 12 March 2024. His phone number is 9876543210. Metformin and dietary changes were recommended.",
+    "metadata": {"domain": "healthcare"}
+  },
+  {
+    "document_id": "MED-002",
+    "text": "Patient Jane Doe, a 29-year-old software engineer from Bengaluru, was diagnosed with chronic migraine on 2025-08-17. Contact jane.doe@example.com. Sumatriptan and regular sleep were prescribed.",
+    "metadata": {"domain": "healthcare"}
+  },
+  {
+    "document_id": "HR-001",
+    "text": "Employee Arun Patel, aged 34, works at Acme Systems. His salary is INR 1,250,000 and his review noted strong project leadership.",
+    "metadata": {"domain": "human_resources"}
+  },
+  {
+    "document_id": "BANK-001",
+    "text": "Customer Maria Garcia from Pune has account number ACCT-884921. Her phone number is +91 9123456789. The account balance review concerned a disputed card payment.",
+    "metadata": {"domain": "banking"}
+  },
+  {
+    "document_id": "MED-003",
+    "text": "Patient Ravi Kumar, age 12 years old, resides at 18 Lake View Lane and lives in Kochi. He was diagnosed with asthma. An inhaled bronchodilator was recommended for wheezing episodes.",
+    "metadata": {"domain": "healthcare"}
+  },
+  {
+    "document_id": "FAQ-001",
+    "text": "Diabetes is a chronic metabolic condition. Common management includes balanced nutrition, regular exercise, glucose monitoring and medication when clinically appropriate.",
+    "metadata": {"domain": "public_faq"}
+  },
+  {
+    "document_id": "FAQ-002",
+    "text": "Migraine is a neurological condition that may cause headache, nausea and sensitivity to light. Treatment depends on symptom frequency and clinical assessment.",
+    "metadata": {"domain": "public_faq"}
+  },
+  {
+    "document_id": "FAQ-003",
+    "text": "A disputed card payment should be reported through the bank's official support channel. Customers should never share passwords or one-time passcodes.",
+    "metadata": {"domain": "public_faq"}
+  }
+]
