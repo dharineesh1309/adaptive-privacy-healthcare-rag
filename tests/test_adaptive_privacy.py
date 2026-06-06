@@ -25,6 +25,11 @@ class DetectorTests(unittest.TestCase):
         self.assertTrue({"name", "age", "address", "location", "phone"} <= types)
         self.assertIn("diagnosis", types)
 
+    def test_placeholders_and_account_balance_are_not_identifiers(self):
+        text = "The account [ACCOUNT] review has an account balance summary."
+        entities = PrivacyDetector().detect(text)
+        self.assertNotIn("account_number", {item.entity_type for item in entities})
+
 
 class TierBuilderTests(unittest.TestCase):
     def test_tiers_are_progressively_more_private(self):
@@ -36,6 +41,12 @@ class TierBuilderTests(unittest.TestCase):
         self.assertIn("[AGE 45-49]", document.medium_text)
         self.assertNotIn("diabetes", document.high_text.lower())
         self.assertIn("[MEDICAL CONDITION]", document.high_text)
+
+    def test_sanitization_is_idempotent(self):
+        builder = TierBuilder()
+        once = builder.build("DOC-1", SENSITIVE_TEXT).high_text
+        twice = builder.sanitize(once, RiskLevel.HIGH)
+        self.assertEqual(once, twice)
 
 
 class RiskTests(unittest.TestCase):

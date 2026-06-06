@@ -42,7 +42,7 @@ PATTERNS = (
     PatternSpec(
         "account_number",
         "direct",
-        r"\b(?:account(?: number| no\.?)?|a/c)\s*(?:is|:|#|-)?\s*([A-Z0-9-]{6,20})\b",
+        r"\b(?:account(?: number| no\.?)|a/c)\s*(?:is|:|#|-)?\s*([A-Z0-9-]{6,20})\b",
         1.0,
         group=1,
     ),
@@ -72,9 +72,8 @@ PATTERNS = (
     PatternSpec(
         "age",
         "quasi",
-        r"\b(?:age(?:d)?\s*[: ]?|)(\d{1,3})(?:-year-old|\s+years?\s+old)\b",
+        r"\b\d{1,3}(?:-year-old|\s+years?\s+old)\b",
         0.55,
-        group=1,
     ),
     PatternSpec(
         "age",
@@ -106,7 +105,7 @@ PATTERNS = (
     PatternSpec(
         "organization",
         "quasi",
-        r"\b(?:works at|employed by|company(?: is)?|organization(?: is)?)\s+([A-Z][A-Za-z&.\-]+(?:\s+[A-Z][A-Za-z&.\-]+){0,3})\b",
+        r"\b(?:works at|employed by|company(?: is)?|organization(?: is)?)\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
         0.45,
         group=1,
         flags=0,
@@ -135,11 +134,16 @@ class PrivacyDetector:
 
     def detect(self, text: str) -> list[EntitySpan]:
         candidates: list[EntitySpan] = []
+        placeholder_ranges = [
+            match.span() for match in re.finditer(r"\[[A-Z][A-Z0-9 -]*\]", text)
+        ]
         for spec in self.patterns:
             for match in re.finditer(spec.pattern, text, spec.flags):
                 start, end = match.span(spec.group)
                 value = text[start:end]
                 if not value.strip():
+                    continue
+                if any(start < right and end > left for left, right in placeholder_ranges):
                     continue
                 candidates.append(
                     EntitySpan(
