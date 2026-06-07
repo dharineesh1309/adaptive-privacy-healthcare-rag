@@ -47,7 +47,8 @@ class AdaptivePrivacyPipeline:
         started = time.perf_counter()
         query_decision = self.classifier.classify(query, role)
         retrieval_limit = top_k or int(self.config.get("retrieval", {}).get("top_k", 3))
-        retrieved = self.retriever.retrieve(query, retrieval_limit)
+        retrieval_query = self.classifier.retrieval_query(query)
+        retrieved = self.retriever.retrieve(retrieval_query, retrieval_limit)
 
         forced_level = {
             "fixed_low": RiskLevel.LOW,

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from .models import QueryRiskDecision, RiskLevel
 
 
@@ -65,6 +67,18 @@ class QueryRiskClassifier:
         if score < float(thresholds["high_min"]):
             return RiskLevel.MEDIUM
         return RiskLevel.HIGH
+
+    def retrieval_query(self, query: str) -> str:
+        """Remove attack/control phrases that would distort document retrieval."""
+        cleaned = query
+        phrases = list(self.risk_config.get("forced_high_patterns", []))
+        for group in self.risk_config.get("pattern_groups", []):
+            if float(group.get("weight", 0.0)) >= 0.5:
+                phrases.extend(group.get("terms", []))
+        for phrase in sorted(phrases, key=len, reverse=True):
+            cleaned = re.sub(re.escape(phrase), " ", cleaned, flags=re.IGNORECASE)
+        cleaned = " ".join(cleaned.split())
+        return cleaned or query
 
     @staticmethod
     def _matches(text: str, terms: list[str]) -> list[str]:

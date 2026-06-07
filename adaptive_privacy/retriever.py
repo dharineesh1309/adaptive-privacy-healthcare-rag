@@ -9,8 +9,44 @@ from collections import Counter, defaultdict
 from .models import DocumentVariants, RetrievalResult
 
 
+STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "give",
+    "he",
+    "her",
+    "his",
+    "in",
+    "is",
+    "it",
+    "of",
+    "on",
+    "or",
+    "she",
+    "the",
+    "their",
+    "to",
+    "was",
+    "were",
+    "what",
+    "with",
+}
+
+
 def tokenize(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text.lower())
+    return [
+        term
+        for term in re.findall(r"[a-z0-9]+", text.lower())
+        if term not in STOP_WORDS
+    ]
 
 
 class BM25Retriever:
