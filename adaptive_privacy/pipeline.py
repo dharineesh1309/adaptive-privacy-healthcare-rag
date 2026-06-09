@@ -92,7 +92,8 @@ class AdaptivePrivacyPipeline:
             blocked=guarded.blocked,
             latency_ms=latency_ms,
         )
-        self.audit.write(result.to_dict())
+        audit_event = result.to_dict()
+        self.audit.write(audit_event)
         return result
 
 

@@ -7,6 +7,8 @@ import csv
 import json
 import statistics
 import sys
+import re
+from collections import Counter
 from pathlib import Path
 
 
@@ -27,7 +29,7 @@ def value_retention(raw_text: str, protected_text: str, category: str | None) ->
     selected = [item for item in entities if category is None or item.category == category]
     if not selected:
         return 0.0
-    protected_lower = protected_text.lower()
+    protected_lower = re.sub(r"\[[^\]]+\]", " ", protected_text).lower()
     retained = sum(item.value.lower() in protected_lower for item in selected)
     return retained / len(selected)
 
@@ -36,14 +38,15 @@ def utility_retention(raw_text: str, protected_text: str) -> float:
     entities = PrivacyDetector().detect(raw_text)
     safe_parts = []
     cursor = 0
-    for entity in entities:
+    for entity in (item for item in entities if item.category == "direct"):
         safe_parts.append(raw_text[cursor : entity.start])
         cursor = entity.end
     safe_parts.append(raw_text[cursor:])
     reference_tokens = set(tokenize(" ".join(safe_parts)))
     if not reference_tokens:
         return 1.0
-    protected_tokens = set(tokenize(protected_text))
+    protected_without_placeholders = re.sub(r"\[[^\]]+\]", " ", protected_text)
+    protected_tokens = set(tokenize(protected_without_placeholders))
     return len(reference_tokens & protected_tokens) / len(reference_tokens)
 
 
@@ -87,6 +90,9 @@ def evaluate(args: argparse.Namespace) -> tuple[list[dict], dict]:
                         == query_case["expected_query_risk"]
                     ),
                     "documents_retrieved": len(result.policy_decisions),
+                    "selected_tiers": "|".join(
+                        item.selected_tier.value for item in result.policy_decisions
+                    ),
                     "direct_identifier_retention": round(
                         statistics.fmean(direct_rates) if direct_rates else 0.0, 4
                     ),
@@ -104,6 +110,12 @@ def evaluate(args: argparse.Namespace) -> tuple[list[dict], dict]:
     summary: dict[str, dict] = {}
     for mode in modes:
         mode_rows = [row for row in rows if row["mode"] == mode]
+        tier_counts = Counter(
+            tier
+            for row in mode_rows
+            for tier in str(row["selected_tiers"]).split("|")
+            if tier
+        )
         summary[mode] = {
             "queries": len(mode_rows),
             "query_risk_accuracy": round(
@@ -127,6 +139,7 @@ def evaluate(args: argparse.Namespace) -> tuple[list[dict], dict]:
             "mean_latency_ms": round(
                 statistics.fmean(row["latency_ms"] for row in mode_rows), 4
             ),
+            "selected_tier_counts": dict(sorted(tier_counts.items())),
         }
     return rows, summary
 

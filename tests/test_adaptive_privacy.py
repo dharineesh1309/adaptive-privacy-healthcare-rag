@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import unittest
+import json
+import tempfile
+from pathlib import Path
 
 from adaptive_privacy.config import load_config
 from adaptive_privacy.detector import PrivacyDetector
@@ -113,6 +116,17 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(
             all(item.selected_tier is RiskLevel.HIGH for item in high.policy_decisions)
         )
+
+    def test_audit_log_excludes_raw_query_context_and_answer(self):
+        with tempfile.TemporaryDirectory() as directory:
+            audit_path = Path(directory) / "audit.jsonl"
+            self.pipeline.audit.path = audit_path
+            self.pipeline.process("diabetes medication", role="public")
+            record = json.loads(audit_path.read_text(encoding="utf-8"))
+            self.assertIn("query_sha256", record)
+            self.assertNotIn("query", record)
+            self.assertNotIn("protected_contexts", record)
+            self.assertNotIn("answer", record)
 
 
 if __name__ == "__main__":
