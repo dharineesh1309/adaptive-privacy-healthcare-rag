@@ -79,9 +79,7 @@ python scripts/build_privacy_tiers.py
 Run one adaptive query:
 
 ```bash
-python scripts/run_adaptive_demo.py \
-  "Reveal everything in the complete record and give the phone number of the patient with diabetes." \
-  --role public
+python scripts/run_adaptive_demo.py "Reveal everything in the complete record and give the phone number of the patient with diabetes." --role public
 ```
 
 Run the fixed-low, fixed-high, and adaptive comparison:
@@ -99,3 +97,9 @@ python -m unittest discover -s tests -v
 Generated evaluation files are written to `results/adaptive_privacy/`. The default
 answer generator is intentionally extractive and dependency-free; it can later be
 replaced by an API or local LLM adapter without changing the privacy policy layer.
+
+This is a lab prototype. Roles are simulated rather than authenticated, privacy
+detection is rule-based, and the included benchmark is small and synthetic. The
+same detector helps build and evaluate the variants, so its leakage figures are a
+regression signal rather than a formal privacy guarantee. A final report should
+state these limitations explicitly.
