@@ -98,16 +98,20 @@ class AdaptivePrivacyPipeline:
 
 
 def extractive_generator(query: str, contexts: list[str]) -> str:
-    """Dependency-free demo generator; replace with an LLM adapter later."""
-    query_terms = set(tokenize(query))
+    """Dependency-free demo generator; replace with an LLM adapter later.
+
+    The demo intentionally answers from only the highest-ranked protected record.
+    This avoids combining attributes belonging to different people.
+    """
+    broad_subject_terms = {"patient", "customer", "employee", "person"}
+    query_terms = set(tokenize(query)) - broad_subject_terms
     candidates: list[tuple[int, str]] = []
-    for context in contexts:
-        for sentence in re.split(r"(?<=[.!?])\s+", context):
-            cleaned = sentence.strip()
-            if not cleaned:
-                continue
-            overlap = len(query_terms.intersection(tokenize(cleaned)))
-            candidates.append((overlap, cleaned))
+    for sentence in re.split(r"(?<=[.!?])\s+", contexts[0]):
+        cleaned = sentence.strip()
+        if not cleaned:
+            continue
+        overlap = len(query_terms.intersection(tokenize(cleaned)))
+        candidates.append((overlap, cleaned))
     candidates.sort(key=lambda item: (-item[0], -len(item[1])))
     selected = [sentence for _, sentence in candidates[:2]]
     return " ".join(selected) if selected else "No supported answer was found."

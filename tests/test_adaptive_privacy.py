@@ -117,6 +117,14 @@ class PipelineTests(unittest.TestCase):
             all(item.selected_tier is RiskLevel.HIGH for item in high.policy_decisions)
         )
 
+    def test_extractive_answer_does_not_mix_retrieved_people(self):
+        result = self.pipeline.process(
+            "What treatment was recommended for the patient with diabetes?",
+            role="patient",
+        )
+        self.assertIn("Metformin", result.answer)
+        self.assertNotIn("migraine", result.answer.lower())
+
     def test_audit_log_excludes_raw_query_context_and_answer(self):
         with tempfile.TemporaryDirectory() as directory:
             audit_path = Path(directory) / "audit.jsonl"

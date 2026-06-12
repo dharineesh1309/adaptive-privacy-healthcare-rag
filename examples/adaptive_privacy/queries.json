@@ -7,7 +7,7 @@
   },
   {
     "query_id": "Q02",
-    "query": "What medication was prescribed to the patient with diabetes?",
+    "query": "What treatment was recommended for the patient with diabetes?",
     "role": "patient",
     "expected_query_risk": "medium"
   },

@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument(
         "query",
         nargs="?",
-        default="What medication was prescribed to the patient with diabetes?",
+        default="What treatment was recommended for the patient with diabetes?",
     )
     parser.add_argument("--role", default="patient")
     parser.add_argument("--top-k", type=int, default=None)
