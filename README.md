@@ -98,6 +98,11 @@ Generated evaluation files are written to `results/adaptive_privacy/`. The defau
 answer generator is intentionally extractive and dependency-free; it can later be
 replaced by an API or local LLM adapter without changing the privacy policy layer.
 
+When the original `run_pipeline.py` completes reconstruction, it now also writes
+`<dataset>_privacy_tiers.json` and adds `retrieved_contexts_low`,
+`retrieved_contexts_medium`, and `retrieved_contexts_high` columns to its Parquet
+output. The legacy `retrieved_contexts` column points to the high tier.
+
 This is a lab prototype. Roles are simulated rather than authenticated, privacy
 detection is rule-based, and the included benchmark is small and synthetic. The
 same detector helps build and evaluate the variants, so its leakage figures are a

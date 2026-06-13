@@ -189,13 +189,23 @@ class HybridRetriever:
         self.top_m = top_m
         
     def retrieve(self, query, top_k):
+        if not self.corpus:
+            return []
+
+        candidate_limit = min(self.top_m, len(self.corpus))
+
         # 1. Get sparse top-M candidates
-        sparse_doc_ids, _ = self.bm25_retriever.get_top_k_ranks(query, self.top_m)
+        sparse_doc_ids, _ = self.bm25_retriever.get_top_k_ranks(query, candidate_limit)
         sparse_ranks = {doc_id: rank for rank, doc_id in enumerate(sparse_doc_ids)}
         
         # 2. Get dense top-M candidates
         dense_scores = self.dense_retriever.get_dense_scores(query)
-        dense_top_indices = np.argpartition(dense_scores, -self.top_m)[-self.top_m:]
+        if candidate_limit == len(dense_scores):
+            dense_top_indices = np.arange(len(dense_scores))
+        else:
+            dense_top_indices = np.argpartition(
+                dense_scores, -candidate_limit
+            )[-candidate_limit:]
         dense_top_scores = dense_scores[dense_top_indices]
         sorted_dense_indices = dense_top_indices[np.argsort(-dense_top_scores)]
         dense_ranks = {doc_id: rank for rank, doc_id in enumerate(sorted_dense_indices)}
@@ -331,7 +341,13 @@ def main():
                     top_indices, _ = bm25_retriever.get_top_k_ranks(q_text, top_k)
                 elif method == "dense":
                     dense_scores = dense_retriever.get_dense_scores(q_text)
-                    top_indices = np.argpartition(dense_scores, -top_k)[-top_k:]
+                    dense_limit = min(top_k, len(dense_scores))
+                    if dense_limit == len(dense_scores):
+                        top_indices = np.arange(len(dense_scores))
+                    else:
+                        top_indices = np.argpartition(
+                            dense_scores, -dense_limit
+                        )[-dense_limit:]
                     top_scores = dense_scores[top_indices]
                     top_indices = top_indices[np.argsort(-top_scores)].tolist()
                 else: # hybrid

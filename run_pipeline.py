@@ -5,6 +5,9 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 from agents.system import PPRSystem
+from adaptive_privacy.io import save_tiered_documents
+from adaptive_privacy.models import RiskLevel
+from adaptive_privacy.tier_builder import TierBuilder
 
 def main():
     import yaml
@@ -100,6 +103,7 @@ def main():
     pii_cache_file = os.path.join(output_dir, f"{dataset}_pii.json")
     slots_cache_file = os.path.join(output_dir, f"{dataset}_slots.json")
     sanitized_output_file = os.path.join(output_dir, f"{dataset}.parquet")
+    tiered_output_file = os.path.join(output_dir, f"{dataset}_privacy_tiers.json")
 
     # Load retrieved questions and contexts
     print(f"Loading retrieval contexts from '{input_file}'...")
@@ -201,19 +205,59 @@ def main():
         rewritten_results = system.reconstruct_batch(doc_texts_list, detected_piis_list, semantic_slots_list)
         
         rewritten_map = {doc_id: text for doc_id, text in zip(doc_ids_list, rewritten_results)}
+
+        # Build irreversible tiered representations for adaptive online selection.
+        # The LLM reconstruction becomes the high-tier candidate after a final
+        # deterministic residual scan. If it is empty, the deterministic high
+        # variant is retained.
+        tier_builder = TierBuilder()
+        tiered_documents = []
+        tiered_map = {}
+        for doc_id, original_text in zip(doc_ids_list, doc_texts_list):
+            variants = tier_builder.build(
+                document_id=doc_id,
+                text=original_text,
+                metadata={"dataset": dataset, "question_type": qtype},
+            )
+            reconstructed = rewritten_map.get(doc_id, "")
+            if reconstructed and reconstructed.strip():
+                variants.high_text = tier_builder.sanitize(
+                    reconstructed, RiskLevel.HIGH
+                )
+            tiered_documents.append(variants)
+            tiered_map[doc_id] = variants
+
+        print(f"Saving adaptive privacy tiers -> '{tiered_output_file}'")
+        save_tiered_documents(tiered_output_file, tiered_documents)
         
-        # Map rewritten safe texts back to the original query Parquet dataframe
-        print("Mapping sanitized documents back to retrieval contexts...")
-        sanitized_contexts_col = []
+        # Map every privacy tier back to the original query dataframe. The high
+        # tier remains the legacy retrieved_contexts value for compatibility.
+        print("Mapping tiered sanitized documents back to retrieval contexts...")
+        low_contexts_col = []
+        medium_contexts_col = []
+        high_contexts_col = []
         for _, row in df.iterrows():
-            row_sanitized = []
+            row_low = []
+            row_medium = []
+            row_high = []
             for doc_id in row["retrieved_ids"]:
-                # Lookup sanitized text using doc ID, fallback to original if missing
-                sanitized_text = rewritten_map.get(str(doc_id), "")
-                row_sanitized.append(sanitized_text)
-            sanitized_contexts_col.append(row_sanitized)
+                variants = tiered_map.get(str(doc_id))
+                if variants is None:
+                    row_low.append("")
+                    row_medium.append("")
+                    row_high.append("")
+                    continue
+                row_low.append(variants.low_text)
+                row_medium.append(variants.medium_text)
+                row_high.append(variants.high_text)
+            low_contexts_col.append(row_low)
+            medium_contexts_col.append(row_medium)
+            high_contexts_col.append(row_high)
             
-        df["retrieved_contexts"] = sanitized_contexts_col
+        df["retrieved_contexts_low"] = low_contexts_col
+        df["retrieved_contexts_medium"] = medium_contexts_col
+        df["retrieved_contexts_high"] = high_contexts_col
+        df["retrieved_contexts"] = high_contexts_col
         
         # Save output Parquet
         print(f"Saving final sanitized contexts Parquet file -> '{sanitized_output_file}'")
