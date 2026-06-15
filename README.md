@@ -88,6 +88,12 @@ Run the fixed-low, fixed-high, and adaptive comparison:
 python scripts/evaluate_adaptive_privacy.py
 ```
 
+Run the larger independently annotated held-out benchmark:
+
+```bash
+python scripts/run_heldout_evaluation.py
+```
+
 Run the extension tests without installing third-party packages:
 
 ```bash

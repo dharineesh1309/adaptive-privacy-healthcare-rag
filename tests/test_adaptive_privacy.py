@@ -6,7 +6,9 @@ import tempfile
 from pathlib import Path
 
 from adaptive_privacy.config import load_config
+from adaptive_privacy.benchmark import generate_heldout_benchmark
 from adaptive_privacy.detector import PrivacyDetector
+from adaptive_privacy.evaluation import literal_present
 from adaptive_privacy.models import RiskLevel
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.policy_engine import PolicyEngine
@@ -135,6 +137,23 @@ class PipelineTests(unittest.TestCase):
             self.assertNotIn("query", record)
             self.assertNotIn("protected_contexts", record)
             self.assertNotIn("answer", record)
+
+
+class HeldoutBenchmarkTests(unittest.TestCase):
+    def test_benchmark_has_independent_ground_truth_and_balanced_queries(self):
+        documents, queries = generate_heldout_benchmark()
+        self.assertEqual(24, len(documents))
+        self.assertEqual(72, len(queries))
+        self.assertTrue(all(item.get("ground_truth") for item in documents))
+        risk_counts = {
+            risk: sum(item["expected_query_risk"] == risk for item in queries)
+            for risk in ("low", "medium", "high")
+        }
+        self.assertEqual({"low": 24, "medium": 24, "high": 24}, risk_counts)
+
+    def test_ground_truth_matcher_ignores_generalization_placeholders(self):
+        self.assertFalse(literal_present("34", "Employee [PERSON], age [AGE 30-34]."))
+        self.assertTrue(literal_present("Kubernetes migration", "The Kubernetes migration succeeded."))
 
 
 if __name__ == "__main__":
