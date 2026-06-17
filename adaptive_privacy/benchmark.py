@@ -176,7 +176,7 @@ def generate_heldout_benchmark() -> tuple[list[dict[str, Any]], list[dict[str, A
                         privacy_value("date", "quasi", date),
                         privacy_value("diagnosis", "sensitive", condition),
                     ],
-                    "utility_terms": [treatment, symptom, profession],
+                    "utility_terms": [condition, treatment, symptom, profession],
                 },
             }
         )
@@ -240,7 +240,7 @@ def generate_heldout_benchmark() -> tuple[list[dict[str, Any]], list[dict[str, A
                         privacy_value("organization", "quasi", organization),
                         privacy_value("salary", "sensitive", salary),
                     ],
-                    "utility_terms": [achievement],
+                    "utility_terms": [achievement, salary],
                 },
             }
         )
@@ -303,7 +303,7 @@ def generate_heldout_benchmark() -> tuple[list[dict[str, Any]], list[dict[str, A
                         privacy_value("city", "quasi", person.city),
                         privacy_value("balance", "sensitive", balance),
                     ],
-                    "utility_terms": [issue, resolution],
+                    "utility_terms": [issue, resolution, balance],
                 },
             }
         )

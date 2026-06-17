@@ -56,7 +56,15 @@ PATTERNS = (
     PatternSpec(
         "name",
         "direct",
-        r"\b(?:Patient|Customer|Employee|Mr|Mrs|Ms|Dr)\.?\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b",
+        r"\b(?:Patient|Customer|Employee|Mr|Mrs|Ms|Dr)\.?\s+(?:(?:is|named)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b",
+        0.90,
+        group=1,
+        flags=0,
+    ),
+    PatternSpec(
+        "name",
+        "direct",
+        r"\b([A-Z][a-z]+\s+[A-Z][a-z]+)\s+is\s+(?:an?\s+)?\d{1,3}-year-old\b",
         0.90,
         group=1,
         flags=0,
@@ -105,7 +113,7 @@ PATTERNS = (
     PatternSpec(
         "organization",
         "quasi",
-        r"\b(?:works at|employed by|company(?: is)?|organization(?: is)?)\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
+        r"\b(?:works at|employed by|company|organization)\s*(?:is|:)?\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
         0.45,
         group=1,
         flags=0,
@@ -115,6 +123,13 @@ PATTERNS = (
         "sensitive",
         r"\b(?:salary|income)\s*(?:is|of|:)?\s*(?:INR|USD|Rs\.?|\$|₹)?\s*[\d,]+(?:\.\d{1,2})?\b",
         0.85,
+    ),
+    PatternSpec(
+        "balance",
+        "sensitive",
+        r"\b(?:(?:account|available)\s+)?balance\s*(?:was|is|:)?\s*((?:INR|USD|Rs\.?|\$|₹)\s*[\d,]+(?:\.\d{1,2})?)\b",
+        0.88,
+        group=1,
     ),
     PatternSpec(
         "diagnosis",

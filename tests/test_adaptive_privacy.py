@@ -35,6 +35,18 @@ class DetectorTests(unittest.TestCase):
         entities = PrivacyDetector().detect(text)
         self.assertNotIn("account_number", {item.entity_type for item in entities})
 
+    def test_detects_alternate_name_organization_and_balance_formats(self):
+        text = (
+            "The employee is Noah Olsen, age 31. Organization: Beacon Analytics. "
+            "Available balance: INR 42,750. Charu Desai is a 36-year-old engineer."
+        )
+        entities = PrivacyDetector().detect(text)
+        values = {item.value for item in entities}
+        self.assertTrue(
+            {"Noah Olsen", "Beacon Analytics", "INR 42,750", "Charu Desai"}
+            <= values
+        )
+
 
 class TierBuilderTests(unittest.TestCase):
     def test_tiers_are_progressively_more_private(self):

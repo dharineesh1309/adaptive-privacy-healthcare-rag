@@ -26,6 +26,7 @@ QUASI_REPLACEMENTS = {
 SENSITIVE_REPLACEMENTS = {
     "diagnosis": "[MEDICAL CONDITION]",
     "salary": "[FINANCIAL INFORMATION]",
+    "balance": "[FINANCIAL INFORMATION]",
 }
 
 
