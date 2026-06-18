@@ -59,7 +59,7 @@ PATTERNS = (
         r"\b(?:Patient|Customer|Employee|Mr|Mrs|Ms|Dr)\.?\s+(?:(?:is|named)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b",
         0.90,
         group=1,
-        flags=0,
+        flags=re.IGNORECASE,
     ),
     PatternSpec(
         "name",
@@ -113,7 +113,7 @@ PATTERNS = (
     PatternSpec(
         "organization",
         "quasi",
-        r"\b(?:works at|employed by|company|organization)\s*(?:is|:)?\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
+        r"\b(?:works at|employed by|company|organization)(?:\s+is|\s*:)?\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
         0.45,
         group=1,
         flags=0,
