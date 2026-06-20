@@ -113,7 +113,7 @@ PATTERNS = (
     PatternSpec(
         "organization",
         "quasi",
-        r"\b(?:works at|employed by|company|organization)(?:\s+is|\s*:)?\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
+        r"\b(?:[Ww]orks at|[Ee]mployed by|[Cc]ompany|[Oo]rganization)(?:\s+is|\s*:)?\s+([A-Z][A-Za-z&\-]*(?:\s+[A-Z][A-Za-z&\-]*){0,3})\b",
         0.45,
         group=1,
         flags=0,
