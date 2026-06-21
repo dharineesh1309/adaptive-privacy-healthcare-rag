@@ -119,6 +119,13 @@ def evaluate_ground_truth(
                 "direct_retention": round(
                     statistics.fmean(row["direct_retention"] for row in risk_rows), 4
                 ),
+                "quasi_retention": round(
+                    statistics.fmean(row["quasi_retention"] for row in risk_rows), 4
+                ),
+                "sensitive_retention": round(
+                    statistics.fmean(row["sensitive_retention"] for row in risk_rows),
+                    4,
+                ),
                 "utility_retention": round(
                     statistics.fmean(row["utility_retention"] for row in risk_rows), 4
                 ),
@@ -176,6 +183,28 @@ def render_markdown_report(summary: dict[str, Any]) -> str:
                 sensitive=metrics["sensitive_retention"],
                 utility=metrics["utility_retention"],
                 latency=metrics["mean_latency_ms"],
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Adaptive policy by expected query risk",
+            "",
+            "| Expected risk | Queries | Direct retention | Quasi retention | Sensitive retention | Utility retention |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+    )
+    adaptive_breakdown = summary["modes"]["adaptive"]["by_expected_query_risk"]
+    for risk in ("low", "medium", "high"):
+        metrics = adaptive_breakdown[risk]
+        lines.append(
+            "| {risk} | {queries} | {direct:.1%} | {quasi:.1%} | {sensitive:.1%} | {utility:.1%} |".format(
+                risk=risk,
+                queries=metrics["queries"],
+                direct=metrics["direct_retention"],
+                quasi=metrics["quasi_retention"],
+                sensitive=metrics["sensitive_retention"],
+                utility=metrics["utility_retention"],
             )
         )
     lines.extend(

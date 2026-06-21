@@ -139,6 +139,15 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("Metformin", result.answer)
         self.assertNotIn("migraine", result.answer.lower())
 
+    def test_verified_role_changes_tier_for_same_low_risk_query(self):
+        query = "Explain metformin for diabetes in general."
+        public_result = self.pipeline.process(query, role="public", top_k=1)
+        doctor_result = self.pipeline.process(query, role="doctor", top_k=1)
+        self.assertEqual(
+            RiskLevel.MEDIUM, public_result.policy_decisions[0].selected_tier
+        )
+        self.assertEqual(RiskLevel.LOW, doctor_result.policy_decisions[0].selected_tier)
+
     def test_audit_log_excludes_raw_query_context_and_answer(self):
         with tempfile.TemporaryDirectory() as directory:
             audit_path = Path(directory) / "audit.jsonl"
