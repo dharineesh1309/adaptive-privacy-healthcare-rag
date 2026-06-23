@@ -7,6 +7,7 @@ from pathlib import Path
 
 from adaptive_privacy.config import load_config
 from adaptive_privacy.benchmark import generate_heldout_benchmark
+from adaptive_privacy.chatdoctor import prepare_chatdoctor_benchmark
 from adaptive_privacy.detector import PrivacyDetector
 from adaptive_privacy.evaluation import literal_present
 from adaptive_privacy.models import RiskLevel
@@ -175,6 +176,27 @@ class HeldoutBenchmarkTests(unittest.TestCase):
     def test_ground_truth_matcher_ignores_generalization_placeholders(self):
         self.assertFalse(literal_present("34", "Employee [PERSON], age [AGE 30-34]."))
         self.assertTrue(literal_present("Kubernetes migration", "The Kubernetes migration succeeded."))
+
+    def test_chatdoctor_adapter_uses_real_text_with_controlled_pii(self):
+        rows = [
+            {
+                "row_idx": 7,
+                "instruction": "Answer the medical question.",
+                "input": "I feel dizzy and nauseous when I stand up.",
+                "output": "Vertigo can cause dizziness. Hydration and evaluation are advised.",
+            }
+        ]
+        documents, queries = prepare_chatdoctor_benchmark(
+            rows, {"revision": "test-revision"}
+        )
+        self.assertEqual(1, len(documents))
+        self.assertEqual(3, len(queries))
+        self.assertIn("I feel dizzy", documents[0]["text"])
+        self.assertEqual("test-revision", documents[0]["metadata"]["source_revision"])
+        self.assertEqual(
+            {"low", "medium", "high"},
+            {item["expected_query_risk"] for item in queries},
+        )
 
 
 if __name__ == "__main__":

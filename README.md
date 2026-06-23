@@ -94,6 +94,16 @@ Run the larger independently annotated held-out benchmark:
 python scripts/run_heldout_evaluation.py
 ```
 
+Fetch and evaluate a 24-row sample from the official ChatDoctor dataset API:
+
+```bash
+python scripts/run_chatdoctor_evaluation.py
+```
+
+The source sample is cached under ignored `data/external/` storage. ChatDoctor is
+already de-identified, so the adapter injects controlled synthetic identifiers and
+records them as ground truth. Use `--refresh` to download the same offset again.
+
 Run the extension tests without installing third-party packages:
 
 ```bash
