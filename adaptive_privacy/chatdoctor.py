@@ -177,12 +177,12 @@ def prepare_chatdoctor_benchmark(
                         privacy_value("name", "direct", name),
                         privacy_value("address", "direct", address),
                         privacy_value("phone", "direct", phone),
-                        privacy_value("age", "quasi", age),
+                        privacy_value("age", "quasi", f"age {age}"),
                         privacy_value("city", "quasi", city),
                         privacy_value("date", "quasi", date),
                         privacy_value("diagnosis", "sensitive", diagnosis),
                     ],
-                    "utility_terms": case_terms,
+                    "utility_terms": [diagnosis, *case_terms],
                 },
             }
         )

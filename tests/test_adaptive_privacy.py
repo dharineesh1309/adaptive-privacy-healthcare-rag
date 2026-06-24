@@ -66,6 +66,14 @@ class TierBuilderTests(unittest.TestCase):
         twice = builder.sanitize(once, RiskLevel.HIGH)
         self.assertEqual(once, twice)
 
+    def test_high_tier_masks_repeated_diagnosis_mentions(self):
+        text = (
+            "Patient John Smith was diagnosed with asthma. "
+            "Asthma may cause wheezing, and asthma treatment was discussed."
+        )
+        high = TierBuilder().build("DOC-2", text).high_text
+        self.assertNotIn("asthma", high.lower())
+
 
 class RiskTests(unittest.TestCase):
     def setUp(self):

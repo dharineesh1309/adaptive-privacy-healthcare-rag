@@ -171,6 +171,30 @@ class PrivacyDetector:
                     )
                 )
 
+        # Once a diagnosis is linked to a person, protect repeated literal mentions
+        # of the same diagnosis throughout the document. This catches cases where
+        # a consultation repeats the condition outside a "diagnosed with" phrase.
+        diagnosis_seeds = [
+            item
+            for item in candidates
+            if item.entity_type == "diagnosis" and len(item.value.strip()) >= 4
+        ]
+        for seed in diagnosis_seeds:
+            for match in re.finditer(re.escape(seed.value), text, re.IGNORECASE):
+                start, end = match.span()
+                if any(start < right and end > left for left, right in placeholder_ranges):
+                    continue
+                candidates.append(
+                    EntitySpan(
+                        entity_type="diagnosis",
+                        category="sensitive",
+                        value=text[start:end],
+                        start=start,
+                        end=end,
+                        sensitivity=seed.sensitivity,
+                    )
+                )
+
         # Prefer more sensitive and longer spans, then return text order.
         candidates.sort(
             key=lambda item: (-item.sensitivity, -(item.end - item.start), item.start)
