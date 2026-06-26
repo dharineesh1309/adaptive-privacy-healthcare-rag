@@ -43,22 +43,23 @@ def evaluate_ground_truth(
                 mode=mode,
             )
             retrieved_ids = [item.document_id for item in result.policy_decisions]
-            combined_context = " ".join(result.protected_contexts)
             privacy_totals: Counter[str] = Counter()
             privacy_retained: Counter[str] = Counter()
             utility_total = 0
             utility_retained = 0
 
-            for document_id in retrieved_ids:
+            for document_id, protected_context in zip(
+                retrieved_ids, result.protected_contexts
+            ):
                 ground_truth = documents_by_id[document_id]["ground_truth"]
                 for item in ground_truth["privacy_values"]:
                     category = item["category"]
                     privacy_totals[category] += 1
-                    if literal_present(item["value"], combined_context):
+                    if literal_present(item["value"], protected_context):
                         privacy_retained[category] += 1
                 for term in ground_truth["utility_terms"]:
                     utility_total += 1
-                    if literal_present(term, combined_context):
+                    if literal_present(term, protected_context):
                         utility_retained += 1
 
             def retention(category: str) -> float:
