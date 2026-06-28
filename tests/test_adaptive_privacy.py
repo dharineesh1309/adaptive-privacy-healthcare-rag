@@ -13,6 +13,7 @@ from adaptive_privacy.evaluation import literal_present
 from adaptive_privacy.models import RiskLevel
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.policy_engine import PolicyEngine
+from adaptive_privacy.reporting import generate_final_report
 from adaptive_privacy.risk_classifier import QueryRiskClassifier
 from adaptive_privacy.tier_builder import TierBuilder
 
@@ -205,6 +206,48 @@ class HeldoutBenchmarkTests(unittest.TestCase):
             {"low", "medium", "high"},
             {item["expected_query_risk"] for item in queries},
         )
+
+    def test_final_report_uses_saved_metrics(self):
+        def summary(name: str, utility: float):
+            breakdown = {
+                level: {
+                    "queries": 1,
+                    "direct_retention": 0.0,
+                    "quasi_retention": 0.0,
+                    "sensitive_retention": 0.0,
+                    "utility_retention": utility,
+                }
+                for level in ("low", "medium", "high")
+            }
+            mode = {
+                "direct_retention": 0.0,
+                "quasi_retention": 0.0,
+                "sensitive_retention": 0.0,
+                "utility_retention": utility,
+                "mean_latency_ms": 1.0,
+                "by_expected_query_risk": breakdown,
+            }
+            return {
+                "benchmark": {
+                    "documents": 1,
+                    "queries": 3,
+                    "source_rows": 1,
+                    "source": "https://example.test",
+                    "source_revision": "abc",
+                    "name": name,
+                },
+                "modes": {
+                    "fixed_low": mode,
+                    "fixed_high": mode,
+                    "adaptive": mode,
+                },
+            }
+
+        report = generate_final_report(
+            summary("controlled", 0.9), summary("chatdoctor", 0.8)
+        )
+        self.assertIn("## Experiment 2: ChatDoctor sample", report)
+        self.assertIn("80.00% utility", report)
 
 
 if __name__ == "__main__":

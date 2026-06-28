@@ -104,6 +104,12 @@ The source sample is cached under ignored `data/external/` storage. ChatDoctor i
 already de-identified, so the adapter injects controlled synthetic identifiers and
 records them as ground truth. Use `--refresh` to download the same offset again.
 
+After running both benchmark scripts, build the combined lab report:
+
+```bash
+python scripts/build_final_report.py
+```
+
 Run the extension tests without installing third-party packages:
 
 ```bash
