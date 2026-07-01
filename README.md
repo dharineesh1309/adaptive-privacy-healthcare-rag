@@ -110,6 +110,17 @@ After running both benchmark scripts, build the combined lab report:
 python scripts/build_final_report.py
 ```
 
+Launch the local browser demonstration:
+
+```bash
+python scripts/run_web_demo.py
+```
+
+Then open `http://127.0.0.1:8765`. Use `--dataset chatdoctor` to run the
+interface over the cached ChatDoctor sample. The server binds to localhost by
+default, serves only protected representations, and writes privacy-safe audit
+metadata.
+
 Run the extension tests without installing third-party packages:
 
 ```bash
