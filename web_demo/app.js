@@ -3,10 +3,12 @@ const queryInput = document.getElementById("query");
 const roleInput = document.getElementById("role");
 const modeInput = document.getElementById("mode");
 const submitButton = form.querySelector("button[type='submit']");
+const compareButton = document.getElementById("compare-button");
 const errorBox = document.getElementById("form-error");
 const resultBox = document.getElementById("result");
 const emptyState = document.getElementById("empty-state");
 const runtime = document.querySelector(".runtime");
+const comparisonBlock = document.getElementById("comparison-block");
 
 function setText(id, value) {
   document.getElementById(id).textContent = String(value);
@@ -61,6 +63,53 @@ function renderResult(data) {
   resultBox.hidden = false;
 }
 
+function strictestTier(decisions) {
+  const order = { low: 0, medium: 1, high: 2 };
+  return decisions.reduce((strictest, decision) => {
+    return order[decision.selected_tier] > order[strictest]
+      ? decision.selected_tier
+      : strictest;
+  }, "low");
+}
+
+function renderComparison(results) {
+  const grid = document.getElementById("comparison-grid");
+  clearElement(grid);
+  results.forEach((data) => {
+    const card = document.createElement("article");
+    card.className = "comparison-card";
+    card.dataset.mode = data.mode;
+    const title = document.createElement("div");
+    title.className = "comparison-title";
+    const mode = document.createElement("strong");
+    mode.textContent = data.mode.replace("_", " ");
+    const tier = document.createElement("span");
+    tier.className = "tier-tag";
+    tier.textContent = `${strictestTier(data.policy_decisions)} tier`;
+    const answer = document.createElement("p");
+    answer.textContent = data.answer;
+    title.append(mode, tier);
+    card.append(title, answer);
+    grid.appendChild(card);
+  });
+  comparisonBlock.hidden = false;
+}
+
+async function requestPolicy(mode) {
+  const response = await fetch("/api/query", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: queryInput.value,
+      role: roleInput.value,
+      mode,
+    }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+
 async function loadHealth() {
   try {
     const response = await fetch("/api/health", { cache: "no-store" });
@@ -79,17 +128,8 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   submitButton.firstElementChild.textContent = "Evaluating policy…";
   try {
-    const response = await fetch("/api/query", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: queryInput.value,
-        role: roleInput.value,
-        mode: modeInput.value,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Request failed");
+    const data = await requestPolicy(modeInput.value);
+    comparisonBlock.hidden = true;
     renderResult(data);
   } catch (error) {
     errorBox.textContent = error.message;
@@ -97,6 +137,28 @@ form.addEventListener("submit", async (event) => {
   } finally {
     submitButton.disabled = false;
     submitButton.firstElementChild.textContent = "Run privacy policy";
+  }
+});
+
+compareButton.addEventListener("click", async () => {
+  errorBox.hidden = true;
+  compareButton.disabled = true;
+  compareButton.textContent = "Comparing…";
+  try {
+    const results = await Promise.all([
+      requestPolicy("fixed_low"),
+      requestPolicy("fixed_high"),
+      requestPolicy("adaptive"),
+    ]);
+    const adaptive = results.find((item) => item.mode === "adaptive");
+    renderResult(adaptive);
+    renderComparison(results);
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.hidden = false;
+  } finally {
+    compareButton.disabled = false;
+    compareButton.textContent = "Compare all three";
   }
 });
 

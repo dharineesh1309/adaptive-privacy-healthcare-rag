@@ -211,20 +211,35 @@ textarea:focus, select:focus, button:focus-visible {
 
 .sample:hover { border-color: var(--accent); color: var(--text); }
 
-.run-button {
+.action-row {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 9px;
+}
+
+.run-button, .compare-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
   padding: 13px 15px;
-  border: 0;
   border-radius: 10px;
-  background: var(--accent);
-  color: var(--accent-ink);
   font-weight: 750;
 }
 
-.run-button:disabled { cursor: wait; opacity: 0.65; }
+.run-button {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.compare-button {
+  justify-content: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.run-button:disabled, .compare-button:disabled { cursor: wait; opacity: 0.65; }
 
 .error {
   margin: 14px 0 0;
@@ -328,6 +343,61 @@ textarea:focus, select:focus, button:focus-visible {
 
 .answer-block p { margin: 0; font-size: 0.92rem; line-height: 1.6; }
 
+.comparison-block {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.comparison-card {
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+}
+
+.comparison-card[data-mode="adaptive"] {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+
+.comparison-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 11px;
+}
+
+.comparison-title strong {
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.tier-tag {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.comparison-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+}
+
 footer {
   display: flex;
   justify-content: space-between;
@@ -349,6 +419,7 @@ footer {
   .flow { overflow-x: auto; white-space: nowrap; }
   .query-panel, .decision-panel { padding: 18px; border-radius: 14px; }
   .field-row, .risk-summary { grid-template-columns: 1fr 1fr; }
+  .action-row, .comparison-grid { grid-template-columns: 1fr; }
   .section-heading { display: block; }
   .local-note, .latency { display: inline-block; margin-top: 8px; }
   footer { flex-direction: column; }
