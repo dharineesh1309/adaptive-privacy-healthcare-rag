@@ -20,3 +20,6 @@ __pycache__/
 
 # Generated adaptive privacy experiment outputs
 results/adaptive_privacy/
+
+# Generated submission packages
+dist/

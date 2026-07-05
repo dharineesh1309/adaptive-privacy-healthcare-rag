@@ -122,6 +122,16 @@ default, serves only protected representations, and writes privacy-safe audit
 metadata. Select **Compare all three** to display fixed-low, fixed-high, and
 adaptive outputs for the same query and role.
 
+Create a clean lab-submission archive after generating both experiment reports:
+
+```bash
+python scripts/package_lab_submission.py
+```
+
+The archive is written to `dist/adaptive_privacy_rag_lab.zip`. It contains source,
+tests, documentation, evaluation summaries, and the final report, but deliberately
+excludes raw datasets, model weights, caches, and audit logs.
+
 Run the extension tests without installing third-party packages:
 
 ```bash
