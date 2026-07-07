@@ -15,6 +15,7 @@ class PolicyEngine:
         document_score: float,
         query_decision: QueryRiskDecision,
         forced_level: RiskLevel | str | None = None,
+        minimum_level: RiskLevel | str | None = None,
     ) -> PolicyDecision:
         weights = self.risk_config["weights"]
         final_score = (
@@ -37,6 +38,13 @@ class PolicyEngine:
             reasons.append("Attack-pattern override forced high tier")
         else:
             selected = self._level_for_score(final_score)
+
+        if minimum_level is not None:
+            minimum = RiskLevel.from_value(minimum_level)
+            order = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
+            if order[selected] < order[minimum]:
+                selected = minimum
+                reasons.append(f"Session policy raised minimum tier to {minimum.value}")
 
         return PolicyDecision(
             document_id=str(document_id),

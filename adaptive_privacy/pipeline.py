@@ -41,6 +41,7 @@ class AdaptivePrivacyPipeline:
         role: str = "unknown",
         top_k: int | None = None,
         mode: str = "adaptive",
+        minimum_tier: RiskLevel | str | None = None,
     ) -> PipelineResult:
         if mode not in {"adaptive", "fixed_low", "fixed_high"}:
             raise ValueError("mode must be adaptive, fixed_low or fixed_high")
@@ -62,6 +63,7 @@ class AdaptivePrivacyPipeline:
                 document_score=item.document.sensitivity_score,
                 query_decision=query_decision,
                 forced_level=forced_level,
+                minimum_level=minimum_tier,
             )
             selected_text = item.document.select(decision.selected_tier)
             contexts.append(

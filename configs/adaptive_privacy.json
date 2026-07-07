@@ -93,5 +93,27 @@
   },
   "retrieval": {
     "top_k": 2
+  },
+  "session": {
+    "decay": 0.72,
+    "thresholds": {
+      "medium": 0.30,
+      "high": 0.55,
+      "block": 0.85
+    },
+    "signals": {
+      "query_risk": 0.22,
+      "new_attribute": 0.08,
+      "repeated_document": 0.12,
+      "attribute_diversity": 0.06,
+      "attack_pattern": 0.35,
+      "role_change": 0.30,
+      "prior_block": 0.20
+    },
+    "budgets": {
+      "quasi_types": 3,
+      "sensitive_types": 2
+    },
+    "max_history": 20
   }
 }
