@@ -12,6 +12,7 @@ from .chatdoctor import prepare_chatdoctor_benchmark
 from .config import PROJECT_ROOT, load_config
 from .io import load_json
 from .pipeline import AdaptivePrivacyPipeline
+from .session_pipeline import SessionAwarePrivacyPipeline
 from .tier_builder import TierBuilder
 
 
@@ -29,6 +30,7 @@ STATIC_FILES = {
 class WebDemoApplication:
     def __init__(self, pipeline: AdaptivePrivacyPipeline, dataset_name: str):
         self.pipeline = pipeline
+        self.session_pipeline = SessionAwarePrivacyPipeline(pipeline)
         self.dataset_name = dataset_name
 
     def health(self) -> dict[str, Any]:
@@ -38,7 +40,14 @@ class WebDemoApplication:
             "documents": len(self.pipeline.documents),
             "roles": sorted(ALLOWED_ROLES),
             "modes": ["adaptive", "fixed_low", "fixed_high"],
+            "session_aware": True,
         }
+
+    def create_session(self) -> dict[str, Any]:
+        return self.session_pipeline.create_session()
+
+    def reset_session(self, session_id: str) -> dict[str, Any]:
+        return self.session_pipeline.reset_session(session_id)
 
     def query(self, payload: dict[str, Any]) -> dict[str, Any]:
         query = str(payload.get("query", "")).strip()
@@ -53,8 +62,20 @@ class WebDemoApplication:
         if mode not in ALLOWED_MODES:
             raise ValueError(f"Unsupported mode: {mode}")
 
-        result = self.pipeline.process(query=query, role=role, mode=mode)
-        response = result.to_dict()
+        session_aware = bool(payload.get("session_aware", False))
+        session_id = str(payload.get("session_id", "")).strip()
+        if session_aware:
+            if not session_id:
+                raise ValueError("A session ID is required for session-aware mode.")
+            response = self.session_pipeline.process(
+                session_id=session_id,
+                query=query,
+                role=role,
+                mode=mode,
+            )
+        else:
+            result = self.pipeline.process(query=query, role=role, mode=mode)
+            response = result.to_dict()
         response["dataset"] = self.dataset_name
         return response
 
@@ -123,18 +144,28 @@ def create_server(
             self.wfile.write(content)
 
         def do_POST(self) -> None:
-            if self.path != "/api/query":
+            if self.path not in {"/api/query", "/api/session"}:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if length <= 0 or length > 20_000:
+                if length < 0 or length > 20_000:
                     raise ValueError("Invalid request size.")
-                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+                payload = (
+                    json.loads(self.rfile.read(length).decode("utf-8"))
+                    if length
+                    else {}
+                )
                 if not isinstance(payload, dict):
                     raise ValueError("JSON object expected.")
-                response = self.app.query(payload)
-            except (ValueError, json.JSONDecodeError) as error:
+                if self.path == "/api/session":
+                    if payload.get("action") == "reset":
+                        response = self.app.reset_session(str(payload.get("session_id", "")))
+                    else:
+                        response = self.app.create_session()
+                else:
+                    response = self.app.query(payload)
+            except (ValueError, KeyError, json.JSONDecodeError) as error:
                 self._send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
                 return
             self._send_json(response)
