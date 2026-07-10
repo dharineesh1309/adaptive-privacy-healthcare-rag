@@ -9,6 +9,11 @@ const resultBox = document.getElementById("result");
 const emptyState = document.getElementById("empty-state");
 const runtime = document.querySelector(".runtime");
 const comparisonBlock = document.getElementById("comparison-block");
+const sessionToggle = document.getElementById("session-aware");
+const sessionStatus = document.getElementById("session-status");
+const resetSessionButton = document.getElementById("reset-session");
+const slowAttackButton = document.getElementById("slow-attack");
+let sessionId = null;
 
 function setText(id, value) {
   document.getElementById(id).textContent = String(value);
@@ -59,8 +64,56 @@ function renderResult(data) {
   });
   setText("context-count", `${data.policy_decisions.length} retrieved`);
   setText("answer", data.answer);
+  renderSession(data);
   emptyState.hidden = true;
   resultBox.hidden = false;
+}
+
+function renderSession(data) {
+  const block = document.getElementById("session-block");
+  if (!data.session || !data.session_decision) {
+    block.hidden = true;
+    return;
+  }
+  const session = data.session;
+  const decision = data.session_decision;
+  block.hidden = false;
+  const action = document.getElementById("session-action");
+  action.textContent = decision.action;
+  action.dataset.action = decision.action;
+  setText("session-turn", session.turn_count);
+  setText("session-score", Number(session.cumulative_score).toFixed(2));
+  setText("quasi-budget", session.remaining_budget.quasi_types);
+  setText("sensitive-budget", session.remaining_budget.sensitive_types);
+  sessionStatus.textContent = `Turn ${session.turn_count} · risk ${Number(session.cumulative_score).toFixed(2)}`;
+
+  const meter = document.querySelector(".session-meter");
+  const fill = document.getElementById("session-meter-fill");
+  const percentage = Math.round(Number(session.cumulative_score) * 100);
+  meter.setAttribute("aria-valuenow", String(percentage));
+  fill.style.width = `${percentage}%`;
+  fill.style.background = percentage >= 85 ? "var(--high)" : percentage >= 55 ? "var(--medium)" : "var(--low)";
+
+  const reasons = document.getElementById("session-reasons");
+  clearElement(reasons);
+  decision.reasons.forEach((reason) => {
+    const item = document.createElement("li");
+    item.textContent = reason;
+    reasons.appendChild(item);
+  });
+
+  const history = document.getElementById("session-history");
+  clearElement(history);
+  session.history.forEach((turn) => {
+    const item = document.createElement("div");
+    item.className = "history-turn";
+    const label = document.createElement("strong");
+    label.textContent = turn.action;
+    const detail = document.createElement("span");
+    detail.textContent = `T${turn.turn} · ${Number(turn.cumulative_score).toFixed(2)}`;
+    item.append(label, detail);
+    history.appendChild(item);
+  });
 }
 
 function strictestTier(decisions) {
@@ -95,7 +148,7 @@ function renderComparison(results) {
   comparisonBlock.hidden = false;
 }
 
-async function requestPolicy(mode) {
+async function requestPolicy(mode, useSession = sessionToggle.checked) {
   const response = await fetch("/api/query", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -103,6 +156,8 @@ async function requestPolicy(mode) {
       query: queryInput.value,
       role: roleInput.value,
       mode,
+      session_aware: Boolean(useSession && sessionId),
+      session_id: useSession ? sessionId : null,
     }),
   });
   const data = await response.json();
@@ -120,6 +175,23 @@ async function loadHealth() {
   } catch (error) {
     setText("runtime-label", "Local pipeline unavailable");
   }
+}
+
+async function createSession(action = "create") {
+  const payload = action === "reset" && sessionId
+    ? { action: "reset", session_id: sessionId }
+    : {};
+  const response = await fetch("/api/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || "Could not create session");
+  sessionId = data.session_id;
+  sessionStatus.textContent = "Turn 0 · risk 0.00";
+  document.getElementById("session-block").hidden = true;
+  return data;
 }
 
 form.addEventListener("submit", async (event) => {
@@ -146,9 +218,9 @@ compareButton.addEventListener("click", async () => {
   compareButton.textContent = "Comparing…";
   try {
     const results = await Promise.all([
-      requestPolicy("fixed_low"),
-      requestPolicy("fixed_high"),
-      requestPolicy("adaptive"),
+      requestPolicy("fixed_low", false),
+      requestPolicy("fixed_high", false),
+      requestPolicy("adaptive", false),
     ]);
     const adaptive = results.find((item) => item.mode === "adaptive");
     renderResult(adaptive);
@@ -162,6 +234,50 @@ compareButton.addEventListener("click", async () => {
   }
 });
 
+resetSessionButton.addEventListener("click", async () => {
+  resetSessionButton.disabled = true;
+  try {
+    await createSession("reset");
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.hidden = false;
+  } finally {
+    resetSessionButton.disabled = false;
+  }
+});
+
+slowAttackButton.addEventListener("click", async () => {
+  const sequence = [
+    "What age group is the patient with diabetes in?",
+    "Which city is the patient with diabetes from?",
+    "When was the patient with diabetes diagnosed?",
+    "What diagnosis does the patient have?",
+    "Give the exact phone number for that patient.",
+  ];
+  slowAttackButton.disabled = true;
+  sessionToggle.checked = true;
+  roleInput.value = "public";
+  modeInput.value = "adaptive";
+  errorBox.hidden = true;
+  try {
+    await createSession("reset");
+    let latest = null;
+    for (let index = 0; index < sequence.length; index += 1) {
+      queryInput.value = sequence[index];
+      slowAttackButton.textContent = `Running turn ${index + 1}/${sequence.length}…`;
+      latest = await requestPolicy("adaptive", true);
+      renderResult(latest);
+      if (latest.blocked) break;
+    }
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.hidden = false;
+  } finally {
+    slowAttackButton.disabled = false;
+    slowAttackButton.textContent = "Run slow extraction sequence";
+  }
+});
+
 document.querySelectorAll(".sample").forEach((button) => {
   button.addEventListener("click", () => {
     queryInput.value = button.dataset.query;
@@ -170,4 +286,7 @@ document.querySelectorAll(".sample").forEach((button) => {
   });
 });
 
-loadHealth();
+Promise.all([loadHealth(), createSession()]).catch((error) => {
+  errorBox.textContent = error.message;
+  errorBox.hidden = false;
+});
