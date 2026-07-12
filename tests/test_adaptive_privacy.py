@@ -14,6 +14,8 @@ from adaptive_privacy.models import RiskLevel
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.policy_engine import PolicyEngine
 from adaptive_privacy.reporting import generate_final_report
+from adaptive_privacy.session_evaluation import evaluate_sessions
+from adaptive_privacy.session_pipeline import SessionAwarePrivacyPipeline
 from adaptive_privacy.risk_classifier import QueryRiskClassifier
 from adaptive_privacy.tier_builder import TierBuilder
 from adaptive_privacy.web_demo import create_application
@@ -217,6 +219,12 @@ class PipelineTests(unittest.TestCase):
         reset = application.reset_session(session_id)
         self.assertEqual(0, reset["turn_count"])
         self.assertEqual(0.0, reset["cumulative_score"])
+
+    def test_session_benchmark_blocks_attacks_not_benign_flow(self):
+        wrapper = SessionAwarePrivacyPipeline(self.pipeline)
+        _, summary = evaluate_sessions(wrapper)
+        self.assertEqual(1.0, summary["metrics"]["attack_block_rate"])
+        self.assertEqual(0.0, summary["metrics"]["benign_block_rate"])
 
 
 class HeldoutBenchmarkTests(unittest.TestCase):

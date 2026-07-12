@@ -132,6 +132,18 @@ The archive is written to `dist/adaptive_privacy_rag_lab.zip`. It contains sourc
 tests, documentation, evaluation summaries, and the final report, but deliberately
 excludes raw datasets, model weights, caches, and audit logs.
 
+Evaluate cumulative multi-turn leakage protection:
+
+```bash
+python scripts/evaluate_session_privacy.py
+```
+
+The session guard tracks repeated document access, requested attribute types,
+role changes, prior blocked attempts, and cumulative risk. It stores no raw query
+text or identifier values. In the web demo, keep **Session-aware protection**
+enabled or select **Run slow extraction sequence** to demonstrate escalation and
+blocking across several individually plausible questions.
+
 Run the extension tests without installing third-party packages:
 
 ```bash
