@@ -47,6 +47,7 @@ def adaptive_breakdown_table(summary: dict[str, Any]) -> list[str]:
 def generate_final_report(
     controlled_summary: dict[str, Any],
     chatdoctor_summary: dict[str, Any],
+    session_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -59,11 +60,11 @@ def generate_final_report(
         "",
         "## Abstract",
         "",
-        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations and an explainable online policy. Query risk, document sensitivity, and a simulated user role determine whether low, medium, or high protection is served. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare the adaptive policy with always-low and always-high masking.",
+        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, an explainable online policy, and a cumulative multi-turn session guard. Query risk, document sensitivity, a simulated user role, and prior access behavior determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare the adaptive policy with always-low and always-high masking, while deterministic session scenarios test slow extraction attacks.",
         "",
         "## Research question",
         "",
-        "Can a lightweight adaptive policy reduce privacy exposure for risky RAG queries while preserving more useful information than applying aggressive masking to every query?",
+        "Can a lightweight adaptive policy reduce privacy exposure for risky RAG queries, preserve more useful information than always-high masking, and detect privacy risk accumulated across individually plausible turns?",
         "",
         "## System design",
         "",
@@ -74,7 +75,10 @@ def generate_final_report(
         "  C --> D[(Protected document store)]",
         "  Q[Query and simulated role] --> R[Risk classifier]",
         "  Q --> X[Safe-text retrieval]",
-        "  X --> P[Risk fusion and tier selection]",
+        "  R --> S[Session risk and privacy budget]",
+        "  X --> S",
+        "  S -->|allow or escalate| P[Risk fusion and tier selection]",
+        "  S -->|block| Z[Safe refusal]",
         "  R --> P",
         "  D --> P",
         "  P --> G[Residual guard and answer generation]",
@@ -113,11 +117,35 @@ def generate_final_report(
         "",
         f"On the ChatDoctor-based experiment, adaptive high-risk queries retained 0% of annotated direct, quasi, and sensitive values. Across all query levels, adaptive masking preserved {percent(chat_adaptive['utility_retention'])} utility versus {percent(chat_high['utility_retention'])} for always-high masking. This supports the intended privacy-utility trade-off within the controlled experimental setup.",
         "",
+    ]
+    if session_summary is not None:
+        session_metrics = session_summary["metrics"]
+        session_benchmark = session_summary["benchmark"]
+        lines.extend(
+            [
+                "## Experiment 3: cumulative multi-turn privacy",
+                "",
+                f"The deterministic session benchmark contains {session_benchmark['scenarios']} conversations: {session_benchmark['attack_scenarios']} slow-extraction or adversarial scenarios and {session_benchmark['benign_scenarios']} benign follow-up scenario. The guard uses decayed cumulative risk, repeated document access, requested-attribute diversity, role changes, and prior blocked attempts. It stores no raw query text or identifier values in session state.",
+                "",
+                "| Metric | Result |",
+                "|---|---:|",
+                f"| Attack block rate | {percent(session_metrics['attack_block_rate'])} |",
+                f"| Benign block rate | {percent(session_metrics['benign_block_rate'])} |",
+                f"| Mean turn to escalation | {session_metrics['mean_turn_to_escalation']:.2f} |",
+                f"| Mean turn to block | {session_metrics['mean_turn_to_block']:.2f} |",
+                "",
+                f"All scripted attack scenarios were blocked in this benchmark ({percent(session_metrics['attack_block_rate'])}), while the benign conversation was not blocked ({percent(session_metrics['benign_block_rate'])} benign block rate). These are deterministic functional scenarios, not a security guarantee or an estimate of real-world attack prevalence.",
+                "",
+            ]
+        )
+    lines.extend(
+        [
         "## Reproduction",
         "",
         "```powershell",
         "python scripts\\run_heldout_evaluation.py",
         "python scripts\\run_chatdoctor_evaluation.py",
+        "python scripts\\evaluate_session_privacy.py",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -130,10 +158,12 @@ def generate_final_report(
         "- The answer generator is extractive; a generative model could introduce new leakage or hallucination behavior.",
         "- ChatDoctor is already de-identified, so identities used for evaluation are synthetic.",
         "- The controlled benchmark was used during development and should not be described as an untouched test set.",
+        "- The session benchmark contains four scripted conversations and does not prove resistance to adaptive attackers.",
         "",
         "## Conclusion",
         "",
         "The extension demonstrates that a small, auditable policy layer can make the supplied fixed sanitization pipeline query- and role-aware. It is suitable as a lab prototype and provides a reproducible foundation for later experiments with independent NER, authenticated roles, larger datasets, and generative answer models.",
         "",
-    ]
+        ]
+    )
     return "\n".join(lines)

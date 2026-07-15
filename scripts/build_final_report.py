@@ -40,6 +40,17 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--session-summary",
+        type=Path,
+        default=(
+            PROJECT_ROOT
+            / "results"
+            / "adaptive_privacy"
+            / "sessions"
+            / "summary.json"
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=(
@@ -53,7 +64,11 @@ def main() -> None:
 
     missing = [
         path
-        for path in (args.controlled_summary, args.chatdoctor_summary)
+        for path in (
+            args.controlled_summary,
+            args.chatdoctor_summary,
+            args.session_summary,
+        )
         if not path.exists()
     ]
     if missing:
@@ -63,7 +78,9 @@ def main() -> None:
         )
 
     report = generate_final_report(
-        load_json(args.controlled_summary), load_json(args.chatdoctor_summary)
+        load_json(args.controlled_summary),
+        load_json(args.chatdoctor_summary),
+        load_json(args.session_summary),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report, encoding="utf-8")
