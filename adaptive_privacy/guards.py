@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .detector import PrivacyDetector
+from .integrity import ContextIntegrityResult, PromptInjectionGuard
 from .models import RiskLevel
 from .tier_builder import TierBuilder
 
@@ -20,10 +21,22 @@ class PrivacyGuard:
     def __init__(self, detector: PrivacyDetector | None = None):
         self.detector = detector or PrivacyDetector()
         self.tier_builder = TierBuilder(self.detector)
+        self.injection_guard = PromptInjectionGuard()
 
     def protect_context(self, text: str, level: RiskLevel | str) -> str:
         # Every tier always receives a fresh direct-identifier scan.
-        return self.tier_builder.sanitize(text, level)
+        return self.protect_context_with_trace(text, level).text
+
+    def protect_context_with_trace(
+        self, text: str, level: RiskLevel | str
+    ) -> ContextIntegrityResult:
+        integrity = self.injection_guard.sanitize_context(text)
+        return ContextIntegrityResult(
+            text=self.tier_builder.sanitize(integrity.text, level),
+            injection_detected=integrity.injection_detected,
+            categories=integrity.categories,
+            removed_segments=integrity.removed_segments,
+        )
 
     def protect_output(self, text: str, level: RiskLevel | str) -> GuardResult:
         selected = RiskLevel.from_value(level)

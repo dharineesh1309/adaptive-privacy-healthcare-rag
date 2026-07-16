@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+from .integrity import PromptInjectionGuard
 from .models import QueryRiskDecision, RiskLevel
 
 
@@ -15,6 +16,7 @@ class QueryRiskClassifier:
             key.lower(): float(value)
             for key, value in config.get("roles", {}).items()
         }
+        self.injection_guard = PromptInjectionGuard()
 
     def classify(self, query: str, role: str = "unknown") -> QueryRiskDecision:
         normalized = " ".join(query.lower().split())
@@ -24,9 +26,14 @@ class QueryRiskClassifier:
         forced_matches = self._matches(
             normalized, self.risk_config.get("forced_high_patterns", [])
         )
-        forced_high = bool(forced_matches)
+        injection = self.injection_guard.assess(normalized)
+        forced_high = bool(forced_matches) or injection.detected
         if forced_matches:
             reasons.append(f"Extraction pattern: {', '.join(forced_matches)}")
+        if injection.detected:
+            reasons.append(
+                "Prompt-injection signal: " + ", ".join(injection.categories)
+            )
 
         for group in self.risk_config.get("pattern_groups", []):
             matches = self._matches(normalized, group.get("terms", []))
@@ -72,6 +79,7 @@ class QueryRiskClassifier:
         """Remove attack/control phrases that would distort document retrieval."""
         cleaned = query
         phrases = list(self.risk_config.get("forced_high_patterns", []))
+        phrases.extend(self.injection_guard.assess(query).matches)
         for group in self.risk_config.get("pattern_groups", []):
             if float(group.get("weight", 0.0)) >= 0.5:
                 phrases.extend(group.get("terms", []))

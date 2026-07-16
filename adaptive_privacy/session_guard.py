@@ -79,6 +79,7 @@ class SessionRiskDecision:
     requested_types: list[str]
     repeated_documents: list[str]
     role_changed: bool
+    unverified_role_claim: bool
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +92,7 @@ class SessionRiskDecision:
             "requested_types": self.requested_types,
             "repeated_documents": self.repeated_documents,
             "role_changed": self.role_changed,
+            "unverified_role_claim": self.unverified_role_claim,
         }
 
 
@@ -121,6 +123,7 @@ class SessionRiskManager:
         query_decision: QueryRiskDecision,
         document_ids: list[str],
         proposed_tiers: list[RiskLevel],
+        unverified_role_claim: bool = False,
     ) -> SessionRiskDecision:
         with self.lock:
             state = self._state(session_id)
@@ -173,6 +176,9 @@ class SessionRiskManager:
             if role_changed:
                 increment += float(signals.get("role_change", 0.30))
                 reasons.append(f"Role changed from {state.role} to {role}")
+            if unverified_role_claim:
+                increment += float(signals.get("unverified_role_claim", 0.25))
+                reasons.append("Unverified privileged-role claim")
             if state.blocked_attempts:
                 increment += float(signals.get("prior_block", 0.20))
                 reasons.append("Session contains a prior blocked attempt")
@@ -233,6 +239,7 @@ class SessionRiskManager:
                 requested_types=sorted(requested),
                 repeated_documents=repeated,
                 role_changed=role_changed,
+                unverified_role_claim=unverified_role_claim,
             )
 
     def record_exposure(

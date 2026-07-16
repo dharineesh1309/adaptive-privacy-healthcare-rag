@@ -32,9 +32,15 @@ class SessionAwarePrivacyPipeline:
         query: str,
         role: str,
         mode: str = "adaptive",
+        role_verified: bool = False,
     ) -> dict[str, Any]:
         started = time.perf_counter()
-        query_decision = self.pipeline.classifier.classify(query, role)
+        role_decision = self.pipeline.role_assurance.resolve(role, role_verified)
+        query_decision = self.pipeline.classifier.classify(
+            query, role_decision.effective_role
+        )
+        if role_decision.downgraded:
+            query_decision.reasons.append(role_decision.reason)
         retrieval_query = self.pipeline.classifier.retrieval_query(query)
         top_k = int(self.pipeline.config.get("retrieval", {}).get("top_k", 3))
         retrieved = self.pipeline.retriever.retrieve(retrieval_query, top_k)
@@ -54,10 +60,11 @@ class SessionAwarePrivacyPipeline:
         session_decision = self.manager.evaluate(
             session_id=session_id,
             query=query,
-            role=role,
+            role=role_decision.effective_role,
             query_decision=query_decision,
             document_ids=[item.document_id for item in retrieved],
             proposed_tiers=[item.selected_tier for item in proposed],
+            unverified_role_claim=role_decision.downgraded,
         )
 
         if session_decision.action == "block":
@@ -85,6 +92,8 @@ class SessionAwarePrivacyPipeline:
                 ),
                 "blocked": True,
                 "latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                "role_assurance": role_decision.to_dict(),
+                "security_events": [],
             }
             audit_event = dict(response)
             audit_event["session"] = session_decision.to_dict()
@@ -95,6 +104,7 @@ class SessionAwarePrivacyPipeline:
                 role=role,
                 mode=mode,
                 minimum_tier=session_decision.minimum_tier,
+                role_verified=role_verified,
             )
             response = result.to_dict()
             tiers = {

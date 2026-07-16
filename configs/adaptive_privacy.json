@@ -108,6 +108,7 @@
       "attribute_diversity": 0.06,
       "attack_pattern": 0.35,
       "role_change": 0.30,
+      "unverified_role_claim": 0.25,
       "prior_block": 0.20
     },
     "budgets": {

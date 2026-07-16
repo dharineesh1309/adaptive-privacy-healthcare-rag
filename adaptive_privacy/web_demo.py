@@ -64,6 +64,7 @@ class WebDemoApplication:
 
         session_aware = bool(payload.get("session_aware", False))
         session_id = str(payload.get("session_id", "")).strip()
+        role_verified = bool(payload.get("role_verified", False))
         if session_aware:
             if not session_id:
                 raise ValueError("A session ID is required for session-aware mode.")
@@ -72,9 +73,15 @@ class WebDemoApplication:
                 query=query,
                 role=role,
                 mode=mode,
+                role_verified=role_verified,
             )
         else:
-            result = self.pipeline.process(query=query, role=role, mode=mode)
+            result = self.pipeline.process(
+                query=query,
+                role=role,
+                mode=mode,
+                role_verified=role_verified,
+            )
             response = result.to_dict()
         response["dataset"] = self.dataset_name
         return response

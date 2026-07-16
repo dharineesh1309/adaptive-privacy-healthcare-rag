@@ -115,6 +115,8 @@ class PipelineResult:
     answer: str
     blocked: bool
     latency_ms: float
+    role_assurance: dict[str, Any] = field(default_factory=dict)
+    security_events: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,4 +129,6 @@ class PipelineResult:
             "answer": self.answer,
             "blocked": self.blocked,
             "latency_ms": round(self.latency_ms, 3),
+            "role_assurance": self.role_assurance,
+            "security_events": self.security_events,
         }
