@@ -15,7 +15,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from adaptive_privacy.config import load_config
 from adaptive_privacy.io import load_json, save_json
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
-from adaptive_privacy.session_evaluation import evaluate_sessions, render_session_report
+from adaptive_privacy.session_evaluation import (
+    evaluate_ablations,
+    evaluate_sessions,
+    render_session_report,
+)
 from adaptive_privacy.session_pipeline import SessionAwarePrivacyPipeline
 from adaptive_privacy.tier_builder import TierBuilder
 
@@ -24,10 +28,12 @@ def main() -> None:
     documents = TierBuilder().build_many(
         load_json(PROJECT_ROOT / "examples" / "adaptive_privacy" / "documents.json")
     )
+    config = load_config()
     pipeline = SessionAwarePrivacyPipeline(
-        AdaptivePrivacyPipeline(documents, config=load_config())
+        AdaptivePrivacyPipeline(documents, config=config)
     )
     rows, summary = evaluate_sessions(pipeline)
+    summary["ablations"] = evaluate_ablations(documents, config)
     output_dir = PROJECT_ROOT / "results" / "adaptive_privacy" / "sessions"
     output_dir.mkdir(parents=True, exist_ok=True)
     save_json(output_dir / "summary.json", summary)
@@ -37,6 +43,14 @@ def main() -> None:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+    with (output_dir / "ablation.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=list(summary["ablations"][0])
+        )
+        writer.writeheader()
+        writer.writerows(summary["ablations"])
     (output_dir / "report.md").write_text(
         render_session_report(summary), encoding="utf-8"
     )
