@@ -217,6 +217,23 @@ textarea:focus, select:focus, button:focus-visible {
 
 .session-toggle input { accent-color: var(--accent); }
 
+.assurance-control {
+  display: flex;
+  grid-template-columns: none;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+  color: var(--text);
+}
+
+.assurance-control input { margin-top: 2px; accent-color: var(--accent); }
+.assurance-control small { display: block; margin-top: 3px; color: var(--muted); font-weight: 500; line-height: 1.35; }
+.assurance-control:has(input:disabled) { opacity: 0.62; }
+
 #reset-session {
   padding: 5px 8px;
   border: 1px solid var(--line);
@@ -299,7 +316,7 @@ textarea:focus, select:focus, button:focus-visible {
 
 .risk-summary {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1px;
   overflow: hidden;
   margin-bottom: 22px;
@@ -331,6 +348,16 @@ textarea:focus, select:focus, button:focus-visible {
   padding: 17px 0;
   border-top: 1px solid var(--line);
 }
+
+.security-block {
+  margin: 2px 0 16px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, var(--high) 45%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--high) 6%, var(--surface));
+}
+
+.security-block #security-count { color: var(--high); font-size: 0.78rem; }
 
 .session-block {
   margin: 2px 0 16px;

@@ -13,6 +13,7 @@ const sessionToggle = document.getElementById("session-aware");
 const sessionStatus = document.getElementById("session-status");
 const resetSessionButton = document.getElementById("reset-session");
 const slowAttackButton = document.getElementById("slow-attack");
+const roleVerifiedInput = document.getElementById("role-verified");
 let sessionId = null;
 
 function setText(id, value) {
@@ -34,6 +35,13 @@ function renderResult(data) {
   riskLevel.dataset.level = decision.level;
   setText("risk-score", formatScore(decision.query_score));
   setText("role-score", formatScore(decision.role_score));
+  const assurance = data.role_assurance || {};
+  const assuranceLabel = assurance.downgraded
+    ? `downgraded → ${assurance.effective_role}`
+    : assurance.verified
+      ? `verified ${assurance.effective_role}`
+      : assurance.effective_role || "standard";
+  setText("role-assurance", assuranceLabel);
   setText("policy-mode", data.mode.replace("_", " "));
   setText("latency", `${Number(data.latency_ms).toFixed(2)} ms · ${data.dataset}`);
 
@@ -65,8 +73,26 @@ function renderResult(data) {
   setText("context-count", `${data.policy_decisions.length} retrieved`);
   setText("answer", data.answer);
   renderSession(data);
+  renderSecurityEvents(data.security_events || []);
   emptyState.hidden = true;
   resultBox.hidden = false;
+}
+
+function renderSecurityEvents(events) {
+  const block = document.getElementById("security-block");
+  const list = document.getElementById("security-events");
+  clearElement(list);
+  if (!events.length) {
+    block.hidden = true;
+    return;
+  }
+  block.hidden = false;
+  setText("security-count", `${events.length} event${events.length === 1 ? "" : "s"}`);
+  events.forEach((event) => {
+    const item = document.createElement("li");
+    item.textContent = `${event.document_id}: removed ${event.removed_segments} segment(s) · ${event.categories.join(", ")}`;
+    list.appendChild(item);
+  });
 }
 
 function renderSession(data) {
@@ -156,6 +182,7 @@ async function requestPolicy(mode, useSession = sessionToggle.checked) {
       query: queryInput.value,
       role: roleInput.value,
       mode,
+      role_verified: roleVerifiedInput.checked && !roleVerifiedInput.disabled,
       session_aware: Boolean(useSession && sessionId),
       session_id: useSession ? sessionId : null,
     }),
@@ -257,6 +284,7 @@ slowAttackButton.addEventListener("click", async () => {
   slowAttackButton.disabled = true;
   sessionToggle.checked = true;
   roleInput.value = "public";
+  updateRoleAssuranceControl();
   modeInput.value = "adaptive";
   errorBox.hidden = true;
   try {
@@ -282,9 +310,19 @@ document.querySelectorAll(".sample").forEach((button) => {
   button.addEventListener("click", () => {
     queryInput.value = button.dataset.query;
     roleInput.value = button.dataset.role;
+    updateRoleAssuranceControl();
     queryInput.focus();
   });
 });
+
+function updateRoleAssuranceControl() {
+  const privileged = roleInput.value === "doctor" || roleInput.value === "admin";
+  roleVerifiedInput.disabled = !privileged;
+  if (!privileged) roleVerifiedInput.checked = false;
+}
+
+roleInput.addEventListener("change", updateRoleAssuranceControl);
+updateRoleAssuranceControl();
 
 Promise.all([loadHealth(), createSession()]).catch((error) => {
   errorBox.textContent = error.message;
