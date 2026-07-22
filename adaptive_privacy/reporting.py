@@ -60,7 +60,7 @@ def generate_final_report(
         "",
         "## Abstract",
         "",
-        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, an explainable online policy, and a cumulative multi-turn session guard. Query risk, document sensitivity, a simulated user role, and prior access behavior determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare the adaptive policy with always-low and always-high masking, while deterministic session scenarios test slow extraction attacks.",
+        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, verified-role gating, retrieved-context prompt-injection neutralization, an explainable online policy, and a cumulative multi-turn session guard. Query risk, document sensitivity, role assurance, and prior access behavior determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare the adaptive policy with always-low and always-high masking, while deterministic adversarial sessions and signal ablations test the defense-in-depth layer.",
         "",
         "## Research question",
         "",
@@ -73,10 +73,12 @@ def generate_final_report(
         "  A[Raw document: offline only] --> B[Privacy and sensitivity extraction]",
         "  B --> C[Low, medium, and high variants]",
         "  C --> D[(Protected document store)]",
-        "  Q[Query and simulated role] --> R[Risk classifier]",
+        "  Q[Query and claimed role] --> A[Role assurance]",
+        "  A --> R[Risk and injection classifier]",
         "  Q --> X[Safe-text retrieval]",
         "  R --> S[Session risk and privacy budget]",
-        "  X --> S",
+        "  X --> I[Retrieved-content integrity guard]",
+        "  I --> S",
         "  S -->|allow or escalate| P[Risk fusion and tier selection]",
         "  S -->|block| Z[Safe refusal]",
         "  R --> P",
@@ -85,7 +87,7 @@ def generate_final_report(
         "  G --> O[Output leakage guard]",
         "```",
         "",
-        "The policy score is `0.55 x query risk + 0.30 x document sensitivity + 0.15 x role risk`. Extraction-attack patterns force the high tier. Roles are simulated for this lab; a production deployment would require authenticated authorization.",
+        "The policy score is `0.55 x query risk + 0.30 x document sensitivity + 0.15 x role risk`. Extraction and prompt-injection patterns force the high tier. Unverified doctor/admin claims are downgraded to public policy, and instruction-like segments found in retrieved text are removed before generation. Role verification remains simulated for this lab; production deployment requires authenticated authorization middleware.",
         "",
         "## Privacy tiers",
         "",
@@ -125,7 +127,7 @@ def generate_final_report(
             [
                 "## Experiment 3: cumulative multi-turn privacy",
                 "",
-                f"The deterministic session benchmark contains {session_benchmark['scenarios']} conversations: {session_benchmark['attack_scenarios']} slow-extraction or adversarial scenarios and {session_benchmark['benign_scenarios']} benign follow-up scenario. The guard uses decayed cumulative risk, repeated document access, requested-attribute diversity, role changes, and prior blocked attempts. It stores no raw query text or identifier values in session state.",
+                f"The deterministic session benchmark contains {session_benchmark['scenarios']} conversations: {session_benchmark['attack_scenarios']} slow-extraction or adversarial scenarios and {session_benchmark['benign_scenarios']} benign scenarios. It covers medical and financial attribute aggregation, repetition, direct prompt injection, transformation-based evasion, role impersonation, and role switching. The guard uses decayed cumulative risk, repeated document access, requested-attribute diversity, role assurance, and prior blocked attempts. It stores no raw query text or identifier values in session state.",
                 "",
                 "| Metric | Result |",
                 "|---|---:|",
@@ -135,6 +137,37 @@ def generate_final_report(
                 f"| Mean turn to block | {session_metrics['mean_turn_to_block']:.2f} |",
                 "",
                 f"All scripted attack scenarios were blocked in this benchmark ({percent(session_metrics['attack_block_rate'])}), while the benign conversation was not blocked ({percent(session_metrics['benign_block_rate'])} benign block rate). These are deterministic functional scenarios, not a security guarantee or an estimate of real-world attack prevalence.",
+                "",
+            ]
+        )
+        if session_summary.get("ablations"):
+            lines.extend(
+                [
+                    "### Signal ablation",
+                    "",
+                    "| Variant | Attack block rate | Benign block rate | Mean turn to block |",
+                    "|---|---:|---:|---:|",
+                ]
+            )
+            for item in session_summary["ablations"]:
+                mean_block = item["mean_turn_to_block"]
+                mean_block_text = f"{mean_block:.2f}" if mean_block is not None else "-"
+                lines.append(
+                    f"| {item['variant']} | {percent(item['attack_block_rate'])} | "
+                    f"{percent(item['benign_block_rate'])} | {mean_block_text} |"
+                )
+            lines.extend(
+                [
+                    "",
+                    "Removing behavioral memory reduced the attack block rate to 0% in this scripted benchmark; removing the explicit attack-pattern signal also reduced it. This demonstrates that the result is not produced by the single-turn classifier alone.",
+                    "",
+                ]
+            )
+        lines.extend(
+            [
+                "### Research basis",
+                "",
+                "The design follows the same broad principle as selective-disclosure RAG research: enforce disclosure before generation instead of trusting an LLM instruction. Multi-turn prompt-leakage studies motivate cumulative evaluation, while NIST guidance motivates deterministic authorization and monitoring controls. See the linked research matrix in `docs/research_scope.md` for scope boundaries and sources.",
                 "",
             ]
         )
@@ -154,15 +187,16 @@ def generate_final_report(
         "",
         "- Query labels and synthetic identifiers are template-controlled, so 100% risk classification and retrieval are not real-world estimates.",
         "- The detector is rule-based and does not provide formal privacy guarantees.",
-        "- User roles are simulated and not authenticated.",
+        "- Role assurance is simulated with a boolean flag and is not authentication.",
         "- The answer generator is extractive; a generative model could introduce new leakage or hallucination behavior.",
         "- ChatDoctor is already de-identified, so identities used for evaluation are synthetic.",
         "- The controlled benchmark was used during development and should not be described as an untouched test set.",
-        "- The session benchmark contains four scripted conversations and does not prove resistance to adaptive attackers.",
+        "- The session benchmark contains ten scripted conversations and does not prove resistance to adaptive attackers.",
+        "- Prompt-injection detection is phrase-based and will miss novel semantic or multilingual attacks.",
         "",
         "## Conclusion",
         "",
-        "The extension demonstrates that a small, auditable policy layer can make the supplied fixed sanitization pipeline query- and role-aware. It is suitable as a lab prototype and provides a reproducible foundation for later experiments with independent NER, authenticated roles, larger datasets, and generative answer models.",
+        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, session-, and prompt-injection-aware. It is suitable as a lab prototype and provides a reproducible foundation for independent NER, authenticated roles, learned injection detectors, larger protected test sets, and generative answer models.",
         "",
         ]
     )

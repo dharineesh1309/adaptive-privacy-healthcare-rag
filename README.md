@@ -67,8 +67,10 @@ Sanitization outputs are saved as Parquet files under the `results/` directory.
 The `adaptive_privacy/` package adds a lightweight, dependency-free lab extension
 to the original fixed sanitization pipeline. It creates three irreversible offline
 representations per document and selects a low, medium, or high privacy tier using
-query risk, document sensitivity, and a simulated user role. Raw documents are not
-loaded by the online pipeline.
+query risk, document sensitivity, verified-role assurance, and cumulative session
+behavior. It also treats prompt-like instructions in retrieved text as untrusted
+data and removes them before generation. Raw documents are not loaded by the
+online pipeline.
 
 Build the tiered representations:
 
@@ -139,10 +141,19 @@ python scripts/evaluate_session_privacy.py
 ```
 
 The session guard tracks repeated document access, requested attribute types,
-role changes, prior blocked attempts, and cumulative risk. It stores no raw query
-text or identifier values. In the web demo, keep **Session-aware protection**
-enabled or select **Run slow extraction sequence** to demonstrate escalation and
-blocking across several individually plausible questions.
+role changes, unverified privileged-role claims, prior blocked attempts, and
+cumulative risk. It stores no raw query text or identifier values. The evaluator
+now runs 10 benign/adversarial conversations and five signal-ablation variants.
+In the web demo, keep **Session-aware protection** enabled or select **Run slow
+extraction sequence** to demonstrate escalation and blocking across individually
+plausible questions. The prompt-injection and role-impersonation samples exercise
+the additional defense layers.
+
+Doctor and administrator roles are conservative by default. Code that invokes the
+pipeline must pass `role_verified=True` to simulate confirmation by an external
+identity layer; unverified privileged claims are evaluated as public. This flag is
+for a lab demonstration only and must not be sourced directly from a user in a
+real deployment.
 
 Run the extension tests without installing third-party packages:
 

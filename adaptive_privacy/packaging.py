@@ -39,6 +39,7 @@ RESULT_FILES = {
     "results/adaptive_privacy/chatdoctor/evaluation.csv": "experiment_results/chatdoctor_evaluation.csv",
     "results/adaptive_privacy/sessions/summary.json": "experiment_results/session_summary.json",
     "results/adaptive_privacy/sessions/evaluation.csv": "experiment_results/session_evaluation.csv",
+    "results/adaptive_privacy/sessions/ablation.csv": "experiment_results/session_ablation.csv",
     "results/adaptive_privacy/sessions/report.md": "experiment_results/SESSION_REPORT.md",
 }
 
