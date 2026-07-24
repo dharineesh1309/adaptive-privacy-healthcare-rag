@@ -217,4 +217,6 @@ def prepare_chatdoctor_benchmark(
                 }
             )
 
+    for item in queries:
+        item["role_verified"] = item["role"] in {"doctor", "admin"}
     return documents, queries

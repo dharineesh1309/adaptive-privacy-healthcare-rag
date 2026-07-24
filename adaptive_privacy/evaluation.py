@@ -40,6 +40,7 @@ def evaluate_ground_truth(
             result = pipeline.process(
                 query_case["query"],
                 role=query_case.get("role", "unknown"),
+                role_verified=bool(query_case.get("role_verified", False)),
                 mode=mode,
             )
             retrieved_ids = [item.document_id for item in result.policy_decisions]
@@ -71,6 +72,7 @@ def evaluate_ground_truth(
                     "query_id": query_case["query_id"],
                     "mode": mode,
                     "role": query_case.get("role", "unknown"),
+                    "role_verified": int(query_case.get("role_verified", False)),
                     "expected_query_risk": query_case["expected_query_risk"],
                     "predicted_query_risk": result.query_decision.level.value,
                     "risk_correct": int(

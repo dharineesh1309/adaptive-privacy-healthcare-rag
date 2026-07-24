@@ -332,4 +332,6 @@ def generate_heldout_benchmark() -> tuple[list[dict[str, Any]], list[dict[str, A
             )
             query_number += 1
 
+    for item in queries:
+        item["role_verified"] = item["role"] in {"doctor", "admin"}
     return documents, queries
