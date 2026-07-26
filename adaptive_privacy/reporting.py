@@ -136,7 +136,7 @@ def generate_final_report(
                 f"| Mean turn to escalation | {session_metrics['mean_turn_to_escalation']:.2f} |",
                 f"| Mean turn to block | {session_metrics['mean_turn_to_block']:.2f} |",
                 "",
-                f"All scripted attack scenarios were blocked in this benchmark ({percent(session_metrics['attack_block_rate'])}), while the benign conversation was not blocked ({percent(session_metrics['benign_block_rate'])} benign block rate). These are deterministic functional scenarios, not a security guarantee or an estimate of real-world attack prevalence.",
+                f"All scripted attack scenarios were blocked in this benchmark ({percent(session_metrics['attack_block_rate'])}), while none of the benign conversations was blocked ({percent(session_metrics['benign_block_rate'])} benign block rate). These are deterministic functional scenarios, not a security guarantee or an estimate of real-world attack prevalence.",
                 "",
             ]
         )

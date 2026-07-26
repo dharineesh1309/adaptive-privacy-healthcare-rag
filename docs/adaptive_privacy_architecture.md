@@ -72,8 +72,8 @@ The experiment compares fixed-low, fixed-high, and adaptive policies using:
 - all-sensitive-value retention;
 - non-direct token utility retention;
 - query-risk classification accuracy;
-- selected-tier distribution; and
-- added latency.
+- selected-tier distribution;
+- added latency;
 - multi-turn attack and benign block rates; and
 - signal-ablation changes in attack block rate.
 
