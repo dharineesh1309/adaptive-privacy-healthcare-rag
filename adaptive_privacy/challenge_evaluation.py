@@ -134,11 +134,28 @@ def render_challenge_report(summary: dict[str, Any]) -> str:
         f"| Benign false-positive rate | {overall['benign_false_positive_rate']:.1%} |",
         f"| Accuracy | {overall['accuracy']:.1%} |",
         "",
+    ]
+    if summary.get("baseline_phrase_only"):
+        baseline = summary["baseline_phrase_only"]["overall"]
+        lines.extend(
+            [
+                "## Phrase baseline comparison",
+                "",
+                "| Detector | Attack recall | Precision | False-positive rate | Accuracy |",
+                "|---|---:|---:|---:|---:|",
+                f"| Exact-phrase baseline | {baseline['attack_recall']:.1%} | {baseline['attack_precision']:.1%} | {baseline['benign_false_positive_rate']:.1%} | {baseline['accuracy']:.1%} |",
+                f"| Compositional multilingual guard | {overall['attack_recall']:.1%} | {overall['attack_precision']:.1%} | {overall['benign_false_positive_rate']:.1%} | {overall['accuracy']:.1%} |",
+                "",
+            ]
+        )
+    lines.extend(
+        [
         "## Per-language performance",
         "",
         "| Language | Cases | Recall | Precision | False-positive rate | Accuracy |",
         "|---|---:|---:|---:|---:|---:|",
-    ]
+        ]
+    )
     for language, metrics in summary["per_language"].items():
         lines.append(
             f"| {language} | {metrics['cases']} | {metrics['attack_recall']:.1%} | "
