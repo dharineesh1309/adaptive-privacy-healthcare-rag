@@ -48,6 +48,7 @@ def generate_final_report(
     controlled_summary: dict[str, Any],
     chatdoctor_summary: dict[str, Any],
     session_summary: dict[str, Any] | None = None,
+    challenge_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -171,6 +172,25 @@ def generate_final_report(
                 "",
             ]
         )
+    if challenge_summary is not None:
+        challenge_benchmark = challenge_summary["benchmark"]
+        challenge_metrics = challenge_summary["overall"]
+        baseline_metrics = challenge_summary["baseline_phrase_only"]["overall"]
+        lines.extend(
+            [
+                "## Experiment 4: frozen multilingual injection challenge",
+                "",
+                f"The versioned challenge contains {challenge_metrics['cases']} balanced attack/benign queries in English, Hindi, and Kannada. Its fixture SHA-256 is `{challenge_benchmark['sha256']}`. Full challenge sentences are absent from the configured exact-phrase list. The comparison evaluates the original phrase-only detector and the compositional detector against the same frozen artifact.",
+                "",
+                "| Detector | Attack recall | Attack precision | Benign false-positive rate | Accuracy |",
+                "|---|---:|---:|---:|---:|",
+                f"| Exact-phrase baseline | {percent(baseline_metrics['attack_recall'])} | {percent(baseline_metrics['attack_precision'])} | {percent(baseline_metrics['benign_false_positive_rate'])} | {percent(baseline_metrics['accuracy'])} |",
+                f"| Compositional multilingual guard | {percent(challenge_metrics['attack_recall'])} | {percent(challenge_metrics['attack_precision'])} | {percent(challenge_metrics['benign_false_positive_rate'])} | {percent(challenge_metrics['accuracy'])} |",
+                "",
+                "The phrase baseline missed every paraphrased attack. The compositional guard combines action and target concepts and detected all attacks in this small curated challenge without flagging its educational controls. This is a regression result, not evidence of general multilingual robustness.",
+                "",
+            ]
+        )
     lines.extend(
         [
         "## Reproduction",
@@ -179,6 +199,7 @@ def generate_final_report(
         "python scripts\\run_heldout_evaluation.py",
         "python scripts\\run_chatdoctor_evaluation.py",
         "python scripts\\evaluate_session_privacy.py",
+        "python scripts\\evaluate_frozen_challenge.py",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -193,10 +214,11 @@ def generate_final_report(
         "- The controlled benchmark was used during development and should not be described as an untouched test set.",
         "- The session benchmark contains ten scripted conversations and does not prove resistance to adaptive attackers.",
         "- Prompt-injection detection is phrase-based and will miss novel semantic or multilingual attacks.",
+        "- The multilingual challenge is small, curated during development, and covers only English, Hindi, and Kannada.",
         "",
         "## Conclusion",
         "",
-        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, session-, and prompt-injection-aware. It is suitable as a lab prototype and provides a reproducible foundation for independent NER, authenticated roles, learned injection detectors, larger protected test sets, and generative answer models.",
+        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, session-, and prompt-injection-aware. The frozen multilingual regression also makes the failure of exact-phrase matching explicit. It is suitable as a lab prototype and provides a reproducible foundation for independent NER, authenticated roles, learned injection detectors, larger protected test sets, and generative answer models.",
         "",
         ]
     )

@@ -41,6 +41,10 @@ RESULT_FILES = {
     "results/adaptive_privacy/sessions/evaluation.csv": "experiment_results/session_evaluation.csv",
     "results/adaptive_privacy/sessions/ablation.csv": "experiment_results/session_ablation.csv",
     "results/adaptive_privacy/sessions/report.md": "experiment_results/SESSION_REPORT.md",
+    "results/adaptive_privacy/frozen_challenge/summary.json": "experiment_results/frozen_challenge_summary.json",
+    "results/adaptive_privacy/frozen_challenge/evaluation.csv": "experiment_results/frozen_challenge_evaluation.csv",
+    "results/adaptive_privacy/frozen_challenge/baseline_evaluation.csv": "experiment_results/frozen_challenge_baseline.csv",
+    "results/adaptive_privacy/frozen_challenge/report.md": "experiment_results/FROZEN_CHALLENGE_REPORT.md",
 }
 
 
