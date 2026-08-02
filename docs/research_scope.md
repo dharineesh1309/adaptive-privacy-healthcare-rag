@@ -31,12 +31,15 @@ session-level disclosure budget or authorization assurance.
    flows.
 7. Five ablation variants that isolate behavioral memory, attack-pattern,
    repetition, and role signals.
+8. A versioned, SHA-256-fingerprinted challenge of 30 balanced English, Hindi,
+   and Kannada paraphrases. It compares the original exact-phrase baseline with a
+   compositional action-plus-target detector.
 
 ## Best next scopes, in priority order
 
-1. **Independent protected test split.** Freeze unseen paraphrases and multilingual
-   attacks before tuning any thresholds. This is the best next improvement for
-   scientific credibility.
+1. **External protected test split.** The bundled frozen challenge is still curated
+   during development. A test set authored by another person, or a public protected
+   split, would provide stronger scientific credibility.
 2. **Real identity middleware.** Replace the lab boolean with signed role claims and
    document-level access-control lists.
 3. **Learned injection detector.** Compare the present phrase baseline with TF-IDF
@@ -52,7 +55,8 @@ session-level disclosure budget or authorization assurance.
 ## Claim boundary
 
 The project demonstrates deterministic functional behavior on controlled data. It
-does not prove privacy, authenticate real users, cover novel semantic injections,
-or estimate real-world attack prevalence. The ablation only shows that the scripted
-result depends on the cumulative signals rather than on the single-turn classifier
-alone.
+does not prove privacy, authenticate real users, cover arbitrary semantic or
+multilingual injections, or estimate real-world attack prevalence. The frozen
+challenge is a regression set, not an independent external benchmark. The ablation
+only shows that the scripted result depends on cumulative signals rather than on
+the single-turn classifier alone.

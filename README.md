@@ -140,6 +140,16 @@ Evaluate cumulative multi-turn leakage protection:
 python scripts/evaluate_session_privacy.py
 ```
 
+Evaluate the frozen English/Hindi/Kannada prompt-injection challenge:
+
+```bash
+python scripts/evaluate_frozen_challenge.py
+```
+
+The challenge fixture is versioned and SHA-256 fingerprinted. It contains 15
+paraphrased attacks and 15 benign educational controls. The report compares the
+original exact-phrase baseline with the compositional multilingual guard.
+
 The session guard tracks repeated document access, requested attribute types,
 role changes, unverified privileged-role claims, prior blocked attempts, and
 cumulative risk. It stores no raw query text or identifier values. The evaluator

@@ -213,7 +213,7 @@ def generate_final_report(
         "- ChatDoctor is already de-identified, so identities used for evaluation are synthetic.",
         "- The controlled benchmark was used during development and should not be described as an untouched test set.",
         "- The session benchmark contains ten scripted conversations and does not prove resistance to adaptive attackers.",
-        "- Prompt-injection detection is phrase-based and will miss novel semantic or multilingual attacks.",
+        "- Prompt-injection detection uses compositional lexicons and will miss novel semantic, obfuscated, or unsupported-language attacks.",
         "- The multilingual challenge is small, curated during development, and covers only English, Hindi, and Kannada.",
         "",
         "## Conclusion",
