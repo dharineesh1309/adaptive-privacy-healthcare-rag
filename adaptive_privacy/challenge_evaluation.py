@@ -33,7 +33,7 @@ def validate_challenge(challenge: dict[str, Any]) -> None:
             raise ValueError(f"Language {language!r} must contain both labels.")
 
 
-def _metrics(rows: list[dict[str, Any]]) -> dict[str, float | int]:
+def binary_metrics(rows: list[dict[str, Any]]) -> dict[str, float | int]:
     true_positive = sum(row["attack"] and row["detected"] for row in rows)
     false_negative = sum(row["attack"] and not row["detected"] for row in rows)
     false_positive = sum(not row["attack"] and row["detected"] for row in rows)
@@ -87,14 +87,14 @@ def evaluate_injection_challenge(
 
     per_language = {}
     for language in challenge["languages"]:
-        per_language[language] = _metrics(
+        per_language[language] = binary_metrics(
             [row for row in rows if row["language"] == language]
         )
     category_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         category_groups[str(row["category"])].append(row)
     per_category = {
-        category: _metrics(category_rows)
+        category: binary_metrics(category_rows)
         for category, category_rows in sorted(category_groups.items())
     }
     summary = {
@@ -106,7 +106,7 @@ def evaluate_injection_challenge(
             "sha256": file_sha256(source_path),
             "languages": challenge["languages"],
         },
-        "overall": _metrics(rows),
+        "overall": binary_metrics(rows),
         "per_language": per_language,
         "per_category": per_category,
         "mean_detection_score": round(
