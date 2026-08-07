@@ -21,6 +21,7 @@ from adaptive_privacy.external_injection import (
 )
 from adaptive_privacy.integrity import PromptInjectionGuard
 from adaptive_privacy.io import load_json, save_json
+from adaptive_privacy.learned_detector import TfidfCentroidInjectionDetector
 
 
 def main() -> None:
@@ -32,21 +33,37 @@ def main() -> None:
     )
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument(
+        "--train-cache",
+        type=Path,
+        default=PROJECT_ROOT / "data" / "external" / "agentic_injection_train.json",
+    )
+    parser.add_argument(
+        "--validation-cache",
+        type=Path,
+        default=PROJECT_ROOT / "data" / "external" / "agentic_injection_validation.json",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=PROJECT_ROOT / "results" / "adaptive_privacy" / "external_injection",
     )
     args = parser.parse_args()
 
-    if args.cache.exists() and not args.refresh:
-        cached = load_json(args.cache)
-        rows = cached["rows"]
-        source = cached["source"]
-        print(f"Using cached external split -> {args.cache}")
-    else:
-        rows, source = fetch_external_rows()
-        save_json(args.cache, {"source": source, "rows": rows})
-        print(f"Downloaded {len(rows)} external test rows -> {args.cache}")
+    def load_split(path: Path, split: str):
+        if path.exists() and not args.refresh:
+            cached = load_json(path)
+            print(f"Using cached external {split} split -> {path}")
+            return cached["rows"], cached["source"]
+        split_rows, split_source = fetch_external_rows(split=split)
+        save_json(path, {"source": split_source, "rows": split_rows})
+        print(f"Downloaded {len(split_rows)} external {split} rows -> {path}")
+        return split_rows, split_source
+
+    rows, source = load_split(args.cache, "test")
+    train_rows, train_source = load_split(args.train_cache, "train")
+    validation_rows, validation_source = load_split(
+        args.validation_cache, "validation"
+    )
 
     baseline_rows, baseline = evaluate_external_rows(
         rows, PromptInjectionGuard(structural=False)
@@ -54,6 +71,16 @@ def main() -> None:
     structural_rows, structural = evaluate_external_rows(
         rows, PromptInjectionGuard(structural=True)
     )
+    learned_detector = TfidfCentroidInjectionDetector()
+    learned_detector.fit(
+        [str(item["text"]) for item in train_rows],
+        [int(item["label"]) for item in train_rows],
+    )
+    learned_detector.tune_threshold(
+        [str(item["text"]) for item in validation_rows],
+        [int(item["label"]) for item in validation_rows],
+    )
+    learned_rows, learned = evaluate_external_rows(rows, learned_detector)
     summary = {
         "benchmark": {
             **source,
@@ -62,6 +89,18 @@ def main() -> None:
         },
         "phrase_baseline": baseline,
         "compositional_guard": structural,
+        "learned_tfidf_centroid": learned,
+        "learned_model": {
+            "training_rows": len(train_rows),
+            "validation_rows": len(validation_rows),
+            "test_rows": len(rows),
+            "vocabulary_features": len(learned_detector.vocabulary),
+            "decision_threshold": round(learned_detector.threshold, 6),
+            "train_revision": train_source.get("revision", "unknown"),
+            "validation_revision": validation_source.get("revision", "unknown"),
+            "test_revision": source.get("revision", "unknown"),
+            "test_labels_used_for_training_or_threshold": False,
+        },
     }
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -69,6 +108,7 @@ def main() -> None:
     for filename, result_rows in (
         ("phrase_baseline.csv", baseline_rows),
         ("compositional_guard.csv", structural_rows),
+        ("learned_tfidf_centroid.csv", learned_rows),
     ):
         with (args.output_dir / filename).open(
             "w", encoding="utf-8", newline=""

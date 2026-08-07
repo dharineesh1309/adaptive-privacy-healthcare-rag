@@ -67,7 +67,7 @@ def fetch_external_rows(
 
 
 def evaluate_external_rows(
-    rows: list[dict[str, Any]], guard: PromptInjectionGuard
+    rows: list[dict[str, Any]], guard: Any
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for item in rows:
@@ -102,6 +102,7 @@ def render_external_report(summary: dict[str, Any]) -> str:
     source = summary["benchmark"]
     baseline = summary["phrase_baseline"]["overall"]
     structural = summary["compositional_guard"]["overall"]
+    learned = summary.get("learned_tfidf_centroid", {}).get("overall")
     lines = [
         "# External Agentic Prompt-Injection Evaluation",
         "",
@@ -114,8 +115,18 @@ def render_external_report(summary: dict[str, Any]) -> str:
         "|---|---:|---:|---:|---:|",
         f"| Exact-phrase baseline | {baseline['attack_recall']:.1%} | {baseline['attack_precision']:.1%} | {baseline['benign_false_positive_rate']:.1%} | {baseline['accuracy']:.1%} |",
         f"| Compositional guard | {structural['attack_recall']:.1%} | {structural['attack_precision']:.1%} | {structural['benign_false_positive_rate']:.1%} | {structural['accuracy']:.1%} |",
-        "",
-        "This is an external synthetic benchmark with scenario-isolated splits. Results apply only to the downloaded revision and do not constitute a security guarantee.",
-        "",
     ]
+    if learned is not None:
+        lines.append(
+            f"| Learned char TF-IDF centroid | {learned['attack_recall']:.1%} | {learned['attack_precision']:.1%} | {learned['benign_false_positive_rate']:.1%} | {learned['accuracy']:.1%} |"
+        )
+    lines.extend(
+        [
+            "",
+            "The learned baseline is fitted only on the training split and selects its threshold only on validation; the scenario-isolated test split remains evaluation-only.",
+            "",
+            "This is an external synthetic benchmark. Results apply only to the downloaded revision and do not constitute a security guarantee.",
+            "",
+        ]
+    )
     return "\n".join(lines)
