@@ -34,6 +34,7 @@ class TfidfCentroidInjectionDetector:
         self.idf: dict[str, float] = {}
         self.centroids: dict[int, dict[str, float]] = {0: {}, 1: {}}
         self.threshold = 0.0
+        self.validation_metrics: dict[str, float] = {}
 
     def fit(self, texts: list[str], labels: list[int]) -> None:
         if len(texts) != len(labels) or not texts:
@@ -75,11 +76,17 @@ class TfidfCentroidInjectionDetector:
             }
             self.centroids[label] = self._normalize(mean)
 
-    def tune_threshold(self, texts: list[str], labels: list[int]) -> float:
+    def tune_threshold(
+        self,
+        texts: list[str],
+        labels: list[int],
+        max_false_positive_rate: float = 0.05,
+    ) -> float:
         scores = [self.margin(text) for text in texts]
         candidates = sorted(set([-1.0, 0.0, 1.0, *scores]))
         best: tuple[float, float, float, float] | None = None
         best_threshold = 0.0
+        best_metrics: dict[str, float] = {}
         for threshold in candidates:
             predictions = [score >= threshold for score in scores]
             true_positive = sum(
@@ -116,11 +123,23 @@ class TfidfCentroidInjectionDetector:
                 else 0.0
             )
             accuracy = (true_positive + true_negative) / len(labels)
-            objective = (f1, -false_positive_rate, accuracy, threshold)
+            if false_positive_rate > max_false_positive_rate:
+                continue
+            objective = (f1, recall, precision, threshold)
             if best is None or objective > best:
                 best = objective
                 best_threshold = threshold
+                best_metrics = {
+                    "f1": round(f1, 4),
+                    "precision": round(precision, 4),
+                    "recall": round(recall, 4),
+                    "false_positive_rate": round(false_positive_rate, 4),
+                    "accuracy": round(accuracy, 4),
+                }
+        if best is None:
+            raise ValueError("No validation threshold satisfies the false-positive cap.")
         self.threshold = best_threshold
+        self.validation_metrics = best_metrics
         return best_threshold
 
     def assess(self, text: str) -> InjectionAssessment:

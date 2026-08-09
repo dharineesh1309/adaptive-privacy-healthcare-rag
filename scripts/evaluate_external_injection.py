@@ -96,6 +96,8 @@ def main() -> None:
             "test_rows": len(rows),
             "vocabulary_features": len(learned_detector.vocabulary),
             "decision_threshold": round(learned_detector.threshold, 6),
+            "validation_false_positive_cap": 0.05,
+            "validation_metrics": learned_detector.validation_metrics,
             "train_revision": train_source.get("revision", "unknown"),
             "validation_revision": validation_source.get("revision", "unknown"),
             "test_revision": source.get("revision", "unknown"),
