@@ -150,6 +150,19 @@ The challenge fixture is versioned and SHA-256 fingerprinted. It contains 15
 paraphrased attacks and 15 benign educational controls. The report compares the
 original exact-phrase baseline with the compositional multilingual guard.
 
+Run the external scenario-isolated prompt-injection evaluation:
+
+```bash
+python scripts/evaluate_external_injection.py
+```
+
+This downloads the CC-BY-4.0 Agentic Prompt-Injection 5K train, validation, and
+test splits through the Hugging Face dataset API. Raw rows are cached under the
+ignored `data/external/` directory and excluded from the submission archive. The
+script compares exact phrases, compositional rules, and a dependency-free
+character TF-IDF centroid baseline. The learned model is evaluation-only because
+its external test false-positive rate is too high for deployment.
+
 The session guard tracks repeated document access, requested attribute types,
 role changes, unverified privileged-role claims, prior blocked attempts, and
 cumulative risk. It stores no raw query text or identifier values. The evaluator

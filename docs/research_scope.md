@@ -18,6 +18,7 @@ session-level disclosure budget or authorization assurance.
 | [NIST AI 600-1](https://doi.org/10.6028/NIST.AI.600-1) | GenAI risk management should address privacy, prompt injection, monitoring, and system-level safeguards. | Privacy-safe audit metadata, deterministic guards, and explicit limitations. |
 | [NIST Agent Identity design tenets](https://www.nist.gov/blogs/cybersecurity-insights/design-tenets-agent-identity-management-systems) | Authorization should use deterministic decisions and continuous runtime verification. | Privileged role claims default to public until verified; session policy is re-evaluated every turn. |
 | [RAG-PIBench](https://arxiv.org/abs/2610.08571) | Prompt-injection detection needs leakage-aware benchmarks and strong baselines. | Phrase-based baseline is measured through injection/evasion scenarios and documented as a baseline, not a solved detector. |
+| [Agentic Prompt-Injection 5K](https://huggingface.co/datasets/3nesdeniz/agentic-prompt-injection-5k) | Paired attacks and benign hard negatives are separated by scenario templates across train, validation, and test. | The external test split evaluates rules and a learned character TF-IDF centroid without using test labels for fitting or threshold selection. |
 
 ## Implemented scope
 
@@ -34,6 +35,11 @@ session-level disclosure budget or authorization assurance.
 8. A versioned, SHA-256-fingerprinted challenge of 30 balanced English, Hindi,
    and Kannada paraphrases. It compares the original exact-phrase baseline with a
    compositional action-plus-target detector.
+9. An external 545-row scenario-isolated test using a fixed dataset revision and
+   CC-BY-4.0 attribution. Raw source rows remain outside the submission archive.
+10. A dependency-free character TF-IDF centroid baseline trained on 3,923 rows and
+    thresholded on 467 validation rows. Its high external benign false-positive
+    rate is retained as a negative generalization result rather than hidden.
 
 ## Best next scopes, in priority order
 
@@ -42,8 +48,9 @@ session-level disclosure budget or authorization assurance.
    split, would provide stronger scientific credibility.
 2. **Real identity middleware.** Replace the lab boolean with signed role claims and
    document-level access-control lists.
-3. **Learned injection detector.** Compare the present phrase baseline with TF-IDF
-   logistic regression or a compact transformer on a public benchmark.
+3. **Better calibrated learned detector.** Compare class-weighted logistic
+   regression or a compact transformer against the centroid baseline, with explicit
+   false-positive constraints and an additional out-of-distribution validation set.
 4. **Generative-model red teaming.** Replace the extractive generator with a local
    or API LLM and measure both verbatim and semantic leakage.
 5. **Cross-session pseudonymous ledger.** Bind privacy budgets to a privacy-preserving

@@ -75,8 +75,10 @@ The experiment compares fixed-low, fixed-high, and adaptive policies using:
 - selected-tier distribution;
 - added latency;
 - multi-turn attack and benign block rates;
-- signal-ablation changes in attack block rate; and
-- frozen multilingual injection recall, precision, and benign false-positive rate.
+- signal-ablation changes in attack block rate;
+- frozen multilingual injection recall, precision, and benign false-positive rate;
+- external scenario-isolated injection recall and false-positive rate; and
+- train/validation/test generalization of a learned character TF-IDF baseline.
 
 The bundled synthetic benchmark is intended for functionality and regression
 testing. Independent NER, human review, and a larger held-out dataset are required

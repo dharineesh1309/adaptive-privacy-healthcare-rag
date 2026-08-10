@@ -45,6 +45,11 @@ RESULT_FILES = {
     "results/adaptive_privacy/frozen_challenge/evaluation.csv": "experiment_results/frozen_challenge_evaluation.csv",
     "results/adaptive_privacy/frozen_challenge/baseline_evaluation.csv": "experiment_results/frozen_challenge_baseline.csv",
     "results/adaptive_privacy/frozen_challenge/report.md": "experiment_results/FROZEN_CHALLENGE_REPORT.md",
+    "results/adaptive_privacy/external_injection/summary.json": "experiment_results/external_injection_summary.json",
+    "results/adaptive_privacy/external_injection/phrase_baseline.csv": "experiment_results/external_phrase_baseline.csv",
+    "results/adaptive_privacy/external_injection/compositional_guard.csv": "experiment_results/external_compositional_guard.csv",
+    "results/adaptive_privacy/external_injection/learned_tfidf_centroid.csv": "experiment_results/external_learned_baseline.csv",
+    "results/adaptive_privacy/external_injection/report.md": "experiment_results/EXTERNAL_INJECTION_REPORT.md",
 }
 
 
@@ -102,6 +107,11 @@ def create_submission_archive(project_root: Path, output_path: Path) -> dict:
             encoding="utf-8"
         )
     )
+    external_summary = json.loads(
+        (project_root / "results/adaptive_privacy/external_injection/summary.json").read_text(
+            encoding="utf-8"
+        )
+    )
     manifest = {
         "project": "Role- and Query-Risk-Aware Adaptive Privacy for RAG",
         "packaged_on": date.today().isoformat(),
@@ -113,6 +123,14 @@ def create_submission_archive(project_root: Path, output_path: Path) -> dict:
             "revision": chatdoctor_summary["benchmark"].get("source_revision"),
             "rows_used": chatdoctor_summary["benchmark"].get("source_rows"),
             "note": "Source rows are excluded; rerun the documented fetch script.",
+        },
+        "external_injection_source": {
+            "dataset": external_summary["benchmark"].get("dataset_id"),
+            "revision": external_summary["benchmark"].get("revision"),
+            "license": external_summary["benchmark"].get("license"),
+            "split": external_summary["benchmark"].get("split"),
+            "rows_used": external_summary["benchmark"].get("rows"),
+            "note": "Raw rows are excluded; rerun the documented fetch script.",
         },
         "license_note": (
             "The upstream repository contains no LICENSE file. Treat this package "

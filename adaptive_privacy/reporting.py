@@ -49,6 +49,7 @@ def generate_final_report(
     chatdoctor_summary: dict[str, Any],
     session_summary: dict[str, Any] | None = None,
     challenge_summary: dict[str, Any] | None = None,
+    external_injection_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -191,6 +192,30 @@ def generate_final_report(
                 "",
             ]
         )
+    if external_injection_summary is not None:
+        external_benchmark = external_injection_summary["benchmark"]
+        external_phrase = external_injection_summary["phrase_baseline"]["overall"]
+        external_rules = external_injection_summary["compositional_guard"]["overall"]
+        external_learned = external_injection_summary["learned_tfidf_centroid"]["overall"]
+        learned_model = external_injection_summary["learned_model"]
+        lines.extend(
+            [
+                "## Experiment 5: external scenario-isolated injection test",
+                "",
+                f"The external evaluation uses the {external_benchmark['rows']}-row test split of [{external_benchmark['dataset_id']}]({external_benchmark['dataset_page']}) at revision `{external_benchmark['revision']}` under {external_benchmark['license']}. Its published train, validation, and test templates are scenario-isolated. Raw rows are cached locally and excluded from the submission archive.",
+                "",
+                "| Detector | Recall | Precision | Benign false-positive rate | Accuracy |",
+                "|---|---:|---:|---:|---:|",
+                f"| Exact-phrase baseline | {percent(external_phrase['attack_recall'])} | {percent(external_phrase['attack_precision'])} | {percent(external_phrase['benign_false_positive_rate'])} | {percent(external_phrase['accuracy'])} |",
+                f"| Compositional guard | {percent(external_rules['attack_recall'])} | {percent(external_rules['attack_precision'])} | {percent(external_rules['benign_false_positive_rate'])} | {percent(external_rules['accuracy'])} |",
+                f"| Learned char TF-IDF centroid | {percent(external_learned['attack_recall'])} | {percent(external_learned['attack_precision'])} | {percent(external_learned['benign_false_positive_rate'])} | {percent(external_learned['accuracy'])} |",
+                "",
+                f"The learned detector used {learned_model['training_rows']} training rows and {learned_model['validation_rows']} validation rows; test labels were not used for fitting or threshold selection. Although validation false-positive rate was {percent(learned_model['validation_metrics']['false_positive_rate'])}, test false-positive rate rose to {percent(external_learned['benign_false_positive_rate'])}. It is therefore reported as a failed generalization baseline and is not deployed in the live pipeline.",
+                "",
+                "The external test materially changes the conclusion: curated regression success does not imply broad agentic-injection coverage. The conservative compositional guard remains useful as one defense layer, but neither rule matching nor this small learned baseline is sufficient alone.",
+                "",
+            ]
+        )
     lines.extend(
         [
         "## Reproduction",
@@ -200,6 +225,7 @@ def generate_final_report(
         "python scripts\\run_chatdoctor_evaluation.py",
         "python scripts\\evaluate_session_privacy.py",
         "python scripts\\evaluate_frozen_challenge.py",
+        "python scripts\\evaluate_external_injection.py",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -215,6 +241,7 @@ def generate_final_report(
         "- The session benchmark contains ten scripted conversations and does not prove resistance to adaptive attackers.",
         "- Prompt-injection detection uses compositional lexicons and will miss novel semantic, obfuscated, or unsupported-language attacks.",
         "- The multilingual challenge is small, curated during development, and covers only English, Hindi, and Kannada.",
+        "- The external benchmark is synthetic, English-only, and its scenario-isolated test distribution caused substantial learned-model overblocking.",
         "",
         "## Conclusion",
         "",
