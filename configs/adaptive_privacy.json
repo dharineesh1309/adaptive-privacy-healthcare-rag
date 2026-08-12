@@ -116,5 +116,47 @@
       "sensitive_types": 2
     },
     "max_history": 20
+  },
+  "purpose": {
+    "default": "general_information",
+    "rules": {
+      "general_information": {
+        "roles": ["public", "guest", "patient", "customer", "doctor", "admin"],
+        "allowed_types": [],
+        "enforce_attribute_scope": true
+      },
+      "treatment": {
+        "roles": ["patient", "doctor"],
+        "allowed_types": ["age", "location", "date", "diagnosis", "treatment"],
+        "enforce_attribute_scope": true
+      },
+      "billing": {
+        "roles": ["customer", "admin"],
+        "allowed_types": ["account_number", "balance", "date", "organization"],
+        "enforce_attribute_scope": true
+      },
+      "customer_support": {
+        "roles": ["customer", "admin"],
+        "allowed_types": ["account_number", "balance", "date", "location"],
+        "enforce_attribute_scope": true
+      },
+      "hr_review": {
+        "roles": ["admin"],
+        "allowed_types": ["age", "location", "date", "organization", "salary"],
+        "enforce_attribute_scope": true
+      },
+      "administration": {
+        "roles": ["admin"],
+        "allowed_types": ["age", "location", "date", "organization", "diagnosis", "treatment", "salary", "balance"],
+        "enforce_attribute_scope": true
+      }
+    }
+  },
+  "ledger": {
+    "budgets": {
+      "quasi_attributes": 3,
+      "sensitive_attributes": 2,
+      "documents": 4
+    }
   }
 }

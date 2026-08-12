@@ -34,6 +34,15 @@ SENSITIVE_TYPES = {"diagnosis", "salary", "balance", "treatment"}
 LEVEL_ORDER = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
 
 
+def infer_requested_types(query: str) -> set[str]:
+    normalized_query = " ".join(query.lower().split())
+    return {
+        entity_type
+        for entity_type, patterns in REQUEST_PATTERNS.items()
+        if any(pattern in normalized_query for pattern in patterns)
+    }
+
+
 @dataclass
 class SessionTurn:
     turn: int
@@ -132,12 +141,7 @@ class SessionRiskManager:
             thresholds = session_config.get("thresholds", {})
             decay = float(session_config.get("decay", 0.72))
 
-            normalized_query = " ".join(query.lower().split())
-            requested = {
-                entity_type
-                for entity_type, patterns in REQUEST_PATTERNS.items()
-                if any(pattern in normalized_query for pattern in patterns)
-            }
+            requested = infer_requested_types(query)
             new_types = requested - state.requested_types
             all_requested = state.requested_types | requested
             repeated = sorted(
