@@ -12,6 +12,7 @@ from .chatdoctor import prepare_chatdoctor_benchmark
 from .config import PROJECT_ROOT, load_config
 from .io import load_json
 from .pipeline import AdaptivePrivacyPipeline
+from .privacy_ledger import PersistentPrivacyLedger
 from .session_pipeline import SessionAwarePrivacyPipeline
 from .tier_builder import TierBuilder
 
@@ -19,6 +20,14 @@ from .tier_builder import TierBuilder
 WEB_ROOT = PROJECT_ROOT / "web_demo"
 ALLOWED_ROLES = {"public", "guest", "patient", "customer", "doctor", "admin"}
 ALLOWED_MODES = {"adaptive", "fixed_low", "fixed_high"}
+ALLOWED_PURPOSES = {
+    "general_information",
+    "treatment",
+    "billing",
+    "customer_support",
+    "hr_review",
+    "administration",
+}
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/index.html": ("index.html", "text/html; charset=utf-8"),
@@ -30,7 +39,13 @@ STATIC_FILES = {
 class WebDemoApplication:
     def __init__(self, pipeline: AdaptivePrivacyPipeline, dataset_name: str):
         self.pipeline = pipeline
-        self.session_pipeline = SessionAwarePrivacyPipeline(pipeline)
+        ledger_path = (
+            PROJECT_ROOT / "results" / "adaptive_privacy" / "principal_ledger.json"
+        )
+        self.session_pipeline = SessionAwarePrivacyPipeline(
+            pipeline,
+            ledger=PersistentPrivacyLedger(pipeline.config, ledger_path),
+        )
         self.dataset_name = dataset_name
 
     def health(self) -> dict[str, Any]:
@@ -41,13 +56,21 @@ class WebDemoApplication:
             "roles": sorted(ALLOWED_ROLES),
             "modes": ["adaptive", "fixed_low", "fixed_high"],
             "session_aware": True,
+            "purpose_aware": True,
+            "persistent_ledger": True,
+            "purposes": sorted(ALLOWED_PURPOSES),
         }
 
-    def create_session(self) -> dict[str, Any]:
-        return self.session_pipeline.create_session()
+    def create_session(self, principal_id: str = "lab-user-01") -> dict[str, Any]:
+        return self.session_pipeline.create_session(principal_id)
 
-    def reset_session(self, session_id: str) -> dict[str, Any]:
-        return self.session_pipeline.reset_session(session_id)
+    def reset_session(
+        self, session_id: str, principal_id: str = "lab-user-01"
+    ) -> dict[str, Any]:
+        return self.session_pipeline.reset_session(session_id, principal_id)
+
+    def reset_ledger(self, principal_id: str) -> dict[str, Any]:
+        return self.session_pipeline.reset_ledger(principal_id)
 
     def query(self, payload: dict[str, Any]) -> dict[str, Any]:
         query = str(payload.get("query", "")).strip()
@@ -65,6 +88,10 @@ class WebDemoApplication:
         session_aware = bool(payload.get("session_aware", False))
         session_id = str(payload.get("session_id", "")).strip()
         role_verified = bool(payload.get("role_verified", False))
+        purpose = str(payload.get("purpose", "general_information")).strip().lower()
+        principal_id = str(payload.get("principal_id", "lab-user-01")).strip()
+        if purpose not in ALLOWED_PURPOSES:
+            raise ValueError(f"Unsupported purpose: {purpose}")
         if session_aware:
             if not session_id:
                 raise ValueError("A session ID is required for session-aware mode.")
@@ -74,6 +101,8 @@ class WebDemoApplication:
                 role=role,
                 mode=mode,
                 role_verified=role_verified,
+                purpose=purpose,
+                principal_id=principal_id,
             )
         else:
             result = self.pipeline.process(
@@ -167,9 +196,18 @@ def create_server(
                     raise ValueError("JSON object expected.")
                 if self.path == "/api/session":
                     if payload.get("action") == "reset":
-                        response = self.app.reset_session(str(payload.get("session_id", "")))
+                        response = self.app.reset_session(
+                            str(payload.get("session_id", "")),
+                            str(payload.get("principal_id", "lab-user-01")),
+                        )
+                    elif payload.get("action") == "reset_ledger":
+                        response = self.app.reset_ledger(
+                            str(payload.get("principal_id", "lab-user-01"))
+                        )
                     else:
-                        response = self.app.create_session()
+                        response = self.app.create_session(
+                            str(payload.get("principal_id", "lab-user-01"))
+                        )
                 else:
                     response = self.app.query(payload)
             except (ValueError, KeyError, json.JSONDecodeError) as error:

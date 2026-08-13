@@ -147,7 +147,7 @@
       },
       "administration": {
         "roles": ["admin"],
-        "allowed_types": ["age", "location", "date", "organization", "diagnosis", "treatment", "salary", "balance"],
+        "allowed_types": ["name", "phone", "email", "address", "account_number", "age", "location", "date", "organization", "diagnosis", "treatment", "salary", "balance"],
         "enforce_attribute_scope": true
       }
     }
