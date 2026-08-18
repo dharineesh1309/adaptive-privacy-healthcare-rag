@@ -375,9 +375,9 @@ class PipelineTests(unittest.TestCase):
         }
         documents = TierBuilder().build_many(
             [
-                {"document_id": "DOC-DIABETES", "text": SENSITIVE_TEXT},
+                {"document_id": "DOC-001", "text": SENSITIVE_TEXT},
                 {
-                    "document_id": "DOC-MIGRAINE",
+                    "document_id": "DOC-002",
                     "text": (
                         "Patient Jane Doe, age 29, lives in Bengaluru. She was "
                         "diagnosed with chronic migraine on 17 August 2025. "
