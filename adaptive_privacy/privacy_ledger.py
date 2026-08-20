@@ -43,7 +43,7 @@ class PersistentPrivacyLedger:
         self.config = config.get("ledger", {})
         self.path = Path(path) if path else None
         self.lock = threading.RLock()
-        self.data: dict[str, Any] = {"version": 1, "principals": {}}
+        self.data: dict[str, Any] = {"version": 2, "principals": {}}
         self._load()
 
     @staticmethod
@@ -77,7 +77,7 @@ class PersistentPrivacyLedger:
             new_quasi = [item for item in new if item["category"] == "quasi"]
             new_sensitive = [item for item in new if item["category"] == "sensitive"]
             new_documents = {
-                item["document_id"] for item in new
+                item["document_ref"] for item in new
             } - set(state["document_ids"])
             quasi_over = len(new_quasi) > budgets["remaining_quasi"]
             sensitive_over = len(new_sensitive) > budgets["remaining_sensitive"]
@@ -139,8 +139,9 @@ class PersistentPrivacyLedger:
             for item in exposures:
                 exposure_keys.add(self._key(item))
             state["exposure_keys"] = sorted(exposure_keys)
+            exposed_documents = {item["document_ref"] for item in exposures}
             state["document_ids"] = sorted(
-                set(state["document_ids"]) | set(tiers)
+                set(state["document_ids"]) | exposed_documents
             )
             state["purposes"] = sorted(set(state["purposes"]) | {purpose})
             state["release_count"] += 1
@@ -210,7 +211,7 @@ class PersistentPrivacyLedger:
                 if not visible:
                     continue
                 item = {
-                    "document_id": document_id,
+                    "document_ref": PersistentPrivacyLedger._document_ref(document_id),
                     "entity_type": entity_type,
                     "category": category,
                 }
@@ -219,13 +220,17 @@ class PersistentPrivacyLedger:
 
     @staticmethod
     def _key(item: dict[str, str]) -> str:
-        return f"{item['document_id']}|{item['entity_type']}|{item['category']}"
+        return f"{item['document_ref']}|{item['entity_type']}|{item['category']}"
+
+    @staticmethod
+    def _document_ref(document_id: str) -> str:
+        return hashlib.sha256(document_id.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _parse_key(value: str) -> dict[str, str]:
-        document_id, entity_type, category = value.split("|", 2)
+        document_ref, entity_type, category = value.split("|", 2)
         return {
-            "document_id": document_id,
+            "document_ref": document_ref,
             "entity_type": entity_type,
             "category": category,
         }
@@ -247,9 +252,26 @@ class PersistentPrivacyLedger:
         if self.path is None or not self.path.exists():
             return
         loaded = json.loads(self.path.read_text(encoding="utf-8"))
-        if loaded.get("version") != 1 or not isinstance(loaded.get("principals"), dict):
+        version = loaded.get("version")
+        if version not in {1, 2} or not isinstance(loaded.get("principals"), dict):
             raise ValueError("Unsupported privacy-ledger format.")
+        if version == 1:
+            for state in loaded["principals"].values():
+                migrated_keys = []
+                for value in state.get("exposure_keys", []):
+                    document_id, entity_type, category = value.split("|", 2)
+                    document_ref = self._document_ref(document_id)
+                    migrated_keys.append(
+                        f"{document_ref}|{entity_type}|{category}"
+                    )
+                state["exposure_keys"] = sorted(set(migrated_keys))
+                state["document_ids"] = sorted(
+                    {self._document_ref(value) for value in state.get("document_ids", [])}
+                )
+            loaded["version"] = 2
         self.data = loaded
+        if version == 1:
+            self._save()
 
     def _save(self) -> None:
         if self.path is None:
