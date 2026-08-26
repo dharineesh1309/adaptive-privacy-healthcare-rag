@@ -26,7 +26,7 @@ body {
   color: var(--text);
 }
 
-button, textarea, select { font: inherit; }
+button, textarea, select, input { font: inherit; }
 
 button, select { cursor: pointer; }
 
@@ -163,7 +163,7 @@ label {
   font-weight: 650;
 }
 
-textarea, select {
+textarea, select, input[type="text"], input:not([type]) {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -179,9 +179,10 @@ textarea {
   line-height: 1.5;
 }
 
-select { padding: 11px 34px 11px 12px; }
+select, input[type="text"], input:not([type]) { padding: 11px 12px; }
+select { padding-right: 34px; }
 
-textarea:focus, select:focus, button:focus-visible {
+textarea:focus, select:focus, input:focus, button:focus-visible {
   outline: 3px solid color-mix(in srgb, var(--accent) 28%, transparent);
   outline-offset: 2px;
 }
@@ -205,6 +206,19 @@ textarea:focus, select:focus, button:focus-visible {
   background: var(--surface-2);
   color: var(--muted);
   font-size: 0.72rem;
+}
+
+.ledger-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 8px 11px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 0.7rem;
 }
 
 .session-toggle {
@@ -234,7 +248,7 @@ textarea:focus, select:focus, button:focus-visible {
 .assurance-control small { display: block; margin-top: 3px; color: var(--muted); font-weight: 500; line-height: 1.35; }
 .assurance-control:has(input:disabled) { opacity: 0.62; }
 
-#reset-session {
+#reset-session, #reset-ledger {
   padding: 5px 8px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -242,6 +256,8 @@ textarea:focus, select:focus, button:focus-visible {
   color: var(--muted);
   font-size: 0.7rem;
 }
+
+#reset-ledger { white-space: nowrap; }
 
 .sample-row {
   display: flex;
@@ -263,6 +279,12 @@ textarea:focus, select:focus, button:focus-visible {
 
 .sample-emphasis {
   border-color: color-mix(in srgb, var(--medium) 55%, var(--line));
+  color: var(--text);
+}
+
+.sample-ledger {
+  border-color: color-mix(in srgb, var(--accent) 62%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
   color: var(--text);
 }
 
@@ -316,7 +338,7 @@ textarea:focus, select:focus, button:focus-visible {
 
 .risk-summary {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 1px;
   overflow: hidden;
   margin-bottom: 22px;
@@ -366,6 +388,71 @@ textarea:focus, select:focus, button:focus-visible {
   border-radius: 12px;
   background: color-mix(in srgb, var(--medium) 5%, var(--surface));
 }
+
+.ledger-block {
+  margin: 2px 0 16px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.decision-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.decision-pills strong {
+  padding: 5px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--medium);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.decision-pills strong[data-action="allow"] { color: var(--low); }
+.decision-pills strong[data-action="block"] { color: var(--high); }
+
+.ledger-stats, .budget-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ledger-stats {
+  margin: 7px 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ledger-stats strong, .budget-grid strong { color: var(--text); }
+
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.budget-grid span {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 7px;
+  background: var(--surface-2);
+}
+
+.ledger-types {
+  margin: 10px 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ledger-reasons { margin-top: 7px; }
 
 .session-action {
   color: var(--medium);
@@ -549,10 +636,11 @@ footer {
   .shell { width: min(100% - 20px, 1180px); padding-top: 24px; }
   .flow { overflow-x: auto; white-space: nowrap; }
   .query-panel, .decision-panel { padding: 18px; border-radius: 14px; }
-  .field-row, .risk-summary { grid-template-columns: 1fr 1fr; }
+  .field-row, .risk-summary, .budget-grid { grid-template-columns: 1fr 1fr; }
   .action-row, .comparison-grid { grid-template-columns: 1fr; }
   .session-controls { grid-template-columns: 1fr auto; }
   .session-controls > span { grid-column: 1 / -1; grid-row: 2; }
+  .ledger-controls { align-items: flex-start; flex-direction: column; }
   .section-heading { display: block; }
   .local-note, .latency { display: inline-block; margin-top: 8px; }
   footer { flex-direction: column; }
