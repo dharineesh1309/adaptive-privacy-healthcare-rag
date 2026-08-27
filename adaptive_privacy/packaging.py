@@ -50,6 +50,9 @@ RESULT_FILES = {
     "results/adaptive_privacy/external_injection/compositional_guard.csv": "experiment_results/external_compositional_guard.csv",
     "results/adaptive_privacy/external_injection/learned_tfidf_centroid.csv": "experiment_results/external_learned_baseline.csv",
     "results/adaptive_privacy/external_injection/report.md": "experiment_results/EXTERNAL_INJECTION_REPORT.md",
+    "results/adaptive_privacy/ledger/summary.json": "experiment_results/ledger_summary.json",
+    "results/adaptive_privacy/ledger/evaluation.csv": "experiment_results/ledger_evaluation.csv",
+    "results/adaptive_privacy/ledger/report.md": "experiment_results/LEDGER_REPORT.md",
 }
 
 

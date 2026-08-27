@@ -20,6 +20,11 @@ path.
   them verified. The bundled web checkbox only simulates that upstream decision.
 - Retrieved text is data, not authority: instruction-like segments are removed
   before the selected context reaches generation.
+- Purpose is evaluated against the effective role and requested attribute types;
+  declaring a purpose does not grant a role new authority.
+- Cross-session state contains only SHA-256 principal/document references,
+  attribute categories, purpose labels, counters, and timestamps. It does not
+  store raw principal IDs, query text, contexts, or private values.
 
 ## Offline flow
 
@@ -37,26 +42,36 @@ path.
 1. Resolve the requested role. Unverified privileged roles are downgraded to
    public policy.
 2. Classify query and prompt-injection risk using explainable patterns.
-3. Assign an effective-role risk value. Unknown roles are treated as public.
-4. Remove attack/control phrases from the retrieval query so they do not distort
+3. Infer requested attribute types and check the declared purpose against the
+   effective role and configured information-flow rule.
+4. Assign an effective-role risk value. Unknown roles are treated as public.
+5. Remove attack/control phrases from the retrieval query so they do not distort
    relevance.
-5. Retrieve document IDs from the low-tier index.
-6. Neutralize prompt-like instructions in retrieved text.
-7. Update cumulative session risk and privacy budgets from behavioral signals.
-8. Fuse query, document, and role risk:
+6. Retrieve document IDs from the low-tier index.
+7. Neutralize prompt-like instructions in retrieved text.
+8. Update cumulative session risk and privacy budgets from behavioral signals.
+9. Preview the marginal quasi/sensitive attribute exposure against the
+   pseudonymous principal's persistent budget. Starting a new session does not
+   reset this budget; a repeated identical disclosure is not charged twice.
+10. Fuse query, document, and role risk:
 
    `risk = 0.55 * query + 0.30 * document + 0.15 * role`
 
-9. Select the low, medium, or high stored variant. Extraction-attack patterns
+11. Select the low, medium, or high stored variant. Extraction-attack patterns
    always force high.
-10. Run a residual privacy scan before generation.
-11. Run another privacy scan over the generated answer.
-12. Record non-sensitive decision metadata in the audit log.
+12. Run a residual privacy scan before generation.
+13. Run another privacy scan over the generated answer.
+14. On an allowed response, record value-free exposure categories in the ledger
+   and non-sensitive decision metadata in the audit log.
 
 ## Failure defaults
 
 - Unknown role: public risk.
 - Unverified doctor/admin role: public risk plus a session-risk signal.
+- Unknown purpose or invalid principal identifier: reject the request.
+- Disallowed role-purpose-attribute flow: block before generation.
+- Exhausted persistent principal budget: escalate the tier or block a targeted
+  disclosure before generation.
 - Direct prompt-injection pattern: high tier.
 - Retrieved prompt-injection pattern: remove the instruction-like segment.
 - Extraction-pattern match: high tier.
@@ -77,8 +92,11 @@ The experiment compares fixed-low, fixed-high, and adaptive policies using:
 - multi-turn attack and benign block rates;
 - signal-ablation changes in attack block rate;
 - frozen multilingual injection recall, precision, and benign false-positive rate;
-- external scenario-isolated injection recall and false-positive rate; and
-- train/validation/test generalization of a learned character TF-IDF baseline.
+- external scenario-isolated injection recall and false-positive rate;
+- train/validation/test generalization of a learned character TF-IDF baseline;
+- cross-session reset-attack blocking with a session-only ablation;
+- duplicate-disclosure charging, purpose denial, and principal isolation; and
+- absence of raw values from the saved pseudonymous ledger.
 
 The bundled synthetic benchmark is intended for functionality and regression
 testing. Independent NER, human review, and a larger held-out dataset are required

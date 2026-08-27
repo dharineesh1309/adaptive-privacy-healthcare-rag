@@ -50,6 +50,7 @@ def generate_final_report(
     session_summary: dict[str, Any] | None = None,
     challenge_summary: dict[str, Any] | None = None,
     external_injection_summary: dict[str, Any] | None = None,
+    ledger_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -62,34 +63,36 @@ def generate_final_report(
         "",
         "## Abstract",
         "",
-        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, verified-role gating, retrieved-context prompt-injection neutralization, an explainable online policy, and a cumulative multi-turn session guard. Query risk, document sensitivity, role assurance, and prior access behavior determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare the adaptive policy with always-low and always-high masking, while deterministic adversarial sessions and signal ablations test the defense-in-depth layer.",
+        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, verified-role gating, purpose-bound disclosure rules, retrieved-context prompt-injection neutralization, cumulative session risk, and a persistent pseudonymous privacy ledger. Query risk, document sensitivity, role assurance, declared purpose, and prior cross-session exposure determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare adaptive masking with always-low and always-high policies, while adversarial conversations and ablations test the defense-in-depth layer.",
         "",
         "## Research question",
         "",
-        "Can a lightweight adaptive policy reduce privacy exposure for risky RAG queries, preserve more useful information than always-high masking, and detect privacy risk accumulated across individually plausible turns?",
+        "Can a lightweight adaptive policy reduce privacy exposure for risky RAG queries, preserve more useful information than always-high masking, and prevent accumulated disclosure from being reset by opening a new session?",
         "",
         "## System design",
         "",
         "```mermaid",
         "flowchart LR",
-        "  A[Raw document: offline only] --> B[Privacy and sensitivity extraction]",
+        "  RAW[Raw document: offline only] --> B[Privacy and sensitivity extraction]",
         "  B --> C[Low, medium, and high variants]",
         "  C --> D[(Protected document store)]",
-        "  Q[Query and claimed role] --> A[Role assurance]",
+        "  Q[Query, role, purpose, principal] --> A[Role assurance]",
         "  A --> R[Risk and injection classifier]",
         "  Q --> X[Safe-text retrieval]",
-        "  R --> S[Session risk and privacy budget]",
+        "  R --> C[Purpose and attribute-flow policy]",
         "  X --> I[Retrieved-content integrity guard]",
-        "  I --> S",
-        "  S -->|allow or escalate| P[Risk fusion and tier selection]",
-        "  S -->|block| Z[Safe refusal]",
+        "  I --> S[Session risk budget]",
+        "  C --> L[Persistent pseudonymous ledger]",
+        "  S --> L",
+        "  L -->|allow or escalate| P[Risk fusion and tier selection]",
+        "  L -->|block| Z[Safe refusal]",
         "  R --> P",
         "  D --> P",
         "  P --> G[Residual guard and answer generation]",
         "  G --> O[Output leakage guard]",
         "```",
         "",
-        "The policy score is `0.55 x query risk + 0.30 x document sensitivity + 0.15 x role risk`. Extraction and prompt-injection patterns force the high tier. Unverified doctor/admin claims are downgraded to public policy, and instruction-like segments found in retrieved text are removed before generation. Role verification remains simulated for this lab; production deployment requires authenticated authorization middleware.",
+        "The tier score is `0.55 x query risk + 0.30 x document sensitivity + 0.15 x role risk`. Extraction and prompt-injection patterns force the high tier. Unverified doctor/admin claims are downgraded to public policy, purpose rules restrict role-attribute flows, and instruction-like segments found in retrieved text are removed before generation. The persistent ledger records only hashed principal/document references and attribute categories; it does not store query text or identifier values. Role verification remains simulated for this lab; production deployment requires authenticated authorization middleware.",
         "",
         "## Privacy tiers",
         "",
@@ -216,6 +219,31 @@ def generate_final_report(
                 "",
             ]
         )
+    if ledger_summary is not None:
+        ledger_benchmark = ledger_summary["benchmark"]
+        ledger_metrics = ledger_summary["metrics"]
+        lines.extend(
+            [
+                "## Experiment 6: purpose-bound persistent privacy ledger",
+                "",
+                f"The controlled ledger benchmark contains {ledger_benchmark['scenarios']} scenarios covering a cross-session reset attack, duplicate disclosure, principal isolation, a role-purpose violation, and benign general information. It compares the full guard with a session-only ablation whose persistent budgets are effectively disabled.",
+                "",
+                "| Metric | Result |",
+                "|---|---:|",
+                f"| Full scenario pass rate | {percent(ledger_metrics['full_guard_pass_rate'])} |",
+                f"| Persistent-ledger reset-attack block rate | {percent(ledger_metrics['persistent_reset_attack_block_rate'])} |",
+                f"| Session-only reset-attack block rate | {percent(ledger_metrics['session_only_reset_attack_block_rate'])} |",
+                f"| Duplicate exposure charge | {ledger_metrics['duplicate_exposure_charge']} |",
+                f"| Raw values absent from saved ledger | {'yes' if ledger_metrics['raw_values_absent_from_ledger'] else 'no'} |",
+                "",
+                "The same principal could not evade its disclosure budget by starting a fresh session, while a different principal retained an independent budget and replaying an already-accounted disclosure incurred no additional charge. The ablation allowed the reset attack, isolating the contribution of cross-session persistence in this deterministic setup.",
+                "",
+                "### Research basis",
+                "",
+                "The purpose policy operationalizes contextual integrity as a role-purpose-attribute flow check. The ledger applies a multi-query accounting idea at an application-policy level: marginal attribute exposures are accumulated before generation across otherwise independent sessions. It is not differential privacy and makes no formal privacy claim.",
+                "",
+            ]
+        )
     lines.extend(
         [
         "## Reproduction",
@@ -226,6 +254,7 @@ def generate_final_report(
         "python scripts\\evaluate_session_privacy.py",
         "python scripts\\evaluate_frozen_challenge.py",
         "python scripts\\evaluate_external_injection.py",
+        "python scripts\\evaluate_privacy_ledger.py",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -242,10 +271,12 @@ def generate_final_report(
         "- Prompt-injection detection uses compositional lexicons and will miss novel semantic, obfuscated, or unsupported-language attacks.",
         "- The multilingual challenge is small, curated during development, and covers only English, Hindi, and Kannada.",
         "- The external benchmark is synthetic, English-only, and its scenario-isolated test distribution caused substantial learned-model overblocking.",
+        "- The purpose and ledger benchmark has five controlled scenarios; budgets and purpose rules are hand-configured rather than learned or legally validated.",
+        "- The persistent ledger is application-level disclosure accounting, not differential privacy, and principal IDs require trustworthy identity binding in production.",
         "",
         "## Conclusion",
         "",
-        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, session-, and prompt-injection-aware. The frozen multilingual regression also makes the failure of exact-phrase matching explicit. It is suitable as a lab prototype and provides a reproducible foundation for independent NER, authenticated roles, learned injection detectors, larger protected test sets, and generative answer models.",
+        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, purpose-, session-, cross-session-, and prompt-injection-aware. The reset-attack ablation isolates why persistent disclosure accounting matters, while the external injection result keeps the security claim appropriately narrow. It is suitable as a lab prototype and provides a reproducible foundation for authenticated identity, independently validated purpose rules, stronger detectors, and generative-model red teaming.",
         "",
         ]
     )

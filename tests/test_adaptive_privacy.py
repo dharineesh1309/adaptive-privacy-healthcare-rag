@@ -18,6 +18,7 @@ from adaptive_privacy.evaluation import literal_present
 from adaptive_privacy.integrity import PromptInjectionGuard
 from adaptive_privacy.external_injection import evaluate_external_rows
 from adaptive_privacy.learned_detector import TfidfCentroidInjectionDetector
+from adaptive_privacy.ledger_evaluation import evaluate_privacy_ledger
 from adaptive_privacy.models import RiskLevel
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.privacy_ledger import PersistentPrivacyLedger
@@ -427,6 +428,36 @@ class PipelineTests(unittest.TestCase):
             self.assertNotIn(principal_id, ledger_text)
             self.assertNotIn("John Smith", ledger_text)
             self.assertNotIn("diabetes", ledger_text.lower())
+
+    def test_ledger_benchmark_distinguishes_persistence_from_session_only(self):
+        documents = TierBuilder().build_many(
+            [
+                {"document_id": "MED-001", "text": SENSITIVE_TEXT},
+                {
+                    "document_id": "MED-002",
+                    "text": (
+                        "Patient Jane Doe, age 29, lives in Bengaluru. She was "
+                        "diagnosed with chronic migraine on 17 August 2025. "
+                        "Sumatriptan was recommended."
+                    ),
+                },
+                {
+                    "document_id": "FAQ-001",
+                    "text": "Diabetes is commonly managed with nutrition and medication.",
+                },
+            ]
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            _, summary = evaluate_privacy_ledger(
+                documents,
+                load_config(),
+                Path(directory) / "ledger.json",
+            )
+        metrics = summary["metrics"]
+        self.assertEqual(1.0, metrics["persistent_reset_attack_block_rate"])
+        self.assertEqual(0.0, metrics["session_only_reset_attack_block_rate"])
+        self.assertEqual(0, metrics["duplicate_exposure_charge"])
+        self.assertTrue(metrics["raw_values_absent_from_ledger"])
 
     def test_session_reset_clears_cumulative_risk(self):
         application = create_application("synthetic")

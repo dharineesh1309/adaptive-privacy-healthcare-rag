@@ -73,6 +73,17 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--ledger-summary",
+        type=Path,
+        default=(
+            PROJECT_ROOT
+            / "results"
+            / "adaptive_privacy"
+            / "ledger"
+            / "summary.json"
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=(
@@ -92,6 +103,7 @@ def main() -> None:
             args.session_summary,
             args.challenge_summary,
             args.external_injection_summary,
+            args.ledger_summary,
         )
         if not path.exists()
     ]
@@ -107,6 +119,7 @@ def main() -> None:
         load_json(args.session_summary),
         load_json(args.challenge_summary),
         load_json(args.external_injection_summary),
+        load_json(args.ledger_summary),
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report, encoding="utf-8")

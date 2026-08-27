@@ -68,9 +68,11 @@ The `adaptive_privacy/` package adds a lightweight, dependency-free lab extensio
 to the original fixed sanitization pipeline. It creates three irreversible offline
 representations per document and selects a low, medium, or high privacy tier using
 query risk, document sensitivity, verified-role assurance, and cumulative session
-behavior. It also treats prompt-like instructions in retrieved text as untrusted
-data and removes them before generation. Raw documents are not loaded by the
-online pipeline.
+behavior. A purpose policy checks whether the effective role may request each
+attribute type, while a pseudonymous persistent ledger prevents a user from
+resetting disclosure budgets by opening a new session. It also treats prompt-like
+instructions in retrieved text as untrusted data and removes them before
+generation. Raw documents are not loaded by the online pipeline.
 
 Build the tiered representations:
 
@@ -122,7 +124,9 @@ Then open `http://127.0.0.1:8765`. Use `--dataset chatdoctor` to run the
 interface over the cached ChatDoctor sample. The server binds to localhost by
 default, serves only protected representations, and writes privacy-safe audit
 metadata. Select **Compare all three** to display fixed-low, fixed-high, and
-adaptive outputs for the same query and role.
+adaptive outputs for the same query and role. Select **Run cross-session reset
+attack** to see a first disclosure allowed in one session and a second targeted
+disclosure blocked after a fresh session is created for the same principal.
 
 Create a clean lab-submission archive after generating both experiment reports:
 
@@ -162,6 +166,18 @@ ignored `data/external/` directory and excluded from the submission archive. The
 script compares exact phrases, compositional rules, and a dependency-free
 character TF-IDF centroid baseline. The learned model is evaluation-only because
 its external test false-positive rate is too high for deployment.
+
+Evaluate purpose binding and persistent cross-session disclosure accounting:
+
+```bash
+python scripts/evaluate_privacy_ledger.py
+```
+
+This five-scenario controlled experiment compares the full guard against a
+session-only ablation. The saved ledger uses SHA-256 principal and document
+references plus attribute categories; it does not contain raw query text,
+identifier values, diagnoses, or salaries. The result is an application policy,
+not a differential-privacy guarantee.
 
 The session guard tracks repeated document access, requested attribute types,
 role changes, unverified privileged-role claims, prior blocked attempts, and
