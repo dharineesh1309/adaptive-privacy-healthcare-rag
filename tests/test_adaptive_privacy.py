@@ -320,6 +320,8 @@ class PipelineTests(unittest.TestCase):
             }
         )
         self.assertEqual("high", response["query_decision"]["level"])
+        self.assertIn("purpose_decision", response)
+        self.assertIn("ledger_decision", response)
         self.assertNotIn("9876543210", " ".join(response["protected_contexts"]))
         with self.assertRaises(ValueError):
             application.query({"query": "", "role": "public"})

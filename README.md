@@ -124,9 +124,12 @@ Then open `http://127.0.0.1:8765`. Use `--dataset chatdoctor` to run the
 interface over the cached ChatDoctor sample. The server binds to localhost by
 default, serves only protected representations, and writes privacy-safe audit
 metadata. Select **Compare all three** to display fixed-low, fixed-high, and
-adaptive outputs for the same query and role. Select **Run cross-session reset
-attack** to see a first disclosure allowed in one session and a second targeted
-disclosure blocked after a fresh session is created for the same principal.
+adaptive outputs for the same query and role on the synthetic dataset only; these
+fixed modes are evaluation controls, not a production authorization surface.
+Select **Run cross-session reset attack** to see a first disclosure allowed in one
+session and a second targeted disclosure blocked after a fresh session is created
+for the same principal. Turning off multi-turn memory starts a fresh session per
+request, but purpose enforcement and the persistent principal ledger remain active.
 
 Create a clean lab-submission archive after generating both experiment reports:
 

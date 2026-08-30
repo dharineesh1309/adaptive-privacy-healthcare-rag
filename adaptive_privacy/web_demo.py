@@ -92,28 +92,44 @@ class WebDemoApplication:
         principal_id = str(payload.get("principal_id", "lab-user-01")).strip()
         if purpose not in ALLOWED_PURPOSES:
             raise ValueError(f"Unsupported purpose: {purpose}")
-        if session_aware:
-            if not session_id:
-                raise ValueError("A session ID is required for session-aware mode.")
-            response = self.session_pipeline.process(
-                session_id=session_id,
-                query=query,
-                role=role,
-                mode=mode,
-                role_verified=role_verified,
-                purpose=purpose,
-                principal_id=principal_id,
-            )
-        else:
+        if session_aware and not session_id:
+            raise ValueError("A session ID is required for session-aware mode.")
+        if not session_aware:
+            session_id = self.create_session(principal_id)["session_id"]
+        response = self.session_pipeline.process(
+            session_id=session_id,
+            query=query,
+            role=role,
+            mode=mode,
+            role_verified=role_verified,
+            purpose=purpose,
+            principal_id=principal_id,
+        )
+        response["dataset"] = self.dataset_name
+        return response
+
+    def compare(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if self.dataset_name != "Controlled synthetic demonstration":
+            raise ValueError("Policy comparison is available only on synthetic data.")
+        query = str(payload.get("query", "")).strip()
+        role = str(payload.get("role", "public")).strip().lower()
+        role_verified = bool(payload.get("role_verified", False))
+        if not query or len(query) > 5000:
+            raise ValueError("A query of at most 5,000 characters is required.")
+        if role not in ALLOWED_ROLES:
+            raise ValueError(f"Unsupported role: {role}")
+        results = []
+        for mode in ("fixed_low", "fixed_high", "adaptive"):
             result = self.pipeline.process(
                 query=query,
                 role=role,
                 mode=mode,
                 role_verified=role_verified,
-            )
-            response = result.to_dict()
-        response["dataset"] = self.dataset_name
-        return response
+            ).to_dict()
+            result["dataset"] = self.dataset_name
+            result["evaluation_only"] = True
+            results.append(result)
+        return {"results": results, "evaluation_only": True}
 
 
 def create_application(dataset: str = "synthetic") -> WebDemoApplication:
@@ -180,7 +196,7 @@ def create_server(
             self.wfile.write(content)
 
         def do_POST(self) -> None:
-            if self.path not in {"/api/query", "/api/session"}:
+            if self.path not in {"/api/query", "/api/session", "/api/compare"}:
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
             try:
@@ -208,8 +224,10 @@ def create_server(
                         response = self.app.create_session(
                             str(payload.get("principal_id", "lab-user-01"))
                         )
-                else:
+                elif self.path == "/api/query":
                     response = self.app.query(payload)
+                else:
+                    response = self.app.compare(payload)
             except (ValueError, KeyError, json.JSONDecodeError) as error:
                 self._send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
                 return

@@ -277,11 +277,12 @@ compareButton.addEventListener("click", async () => {
   compareButton.disabled = true;
   compareButton.textContent = "Comparing...";
   try {
-    const results = await Promise.all([
-      requestPolicy("fixed_low", false),
-      requestPolicy("fixed_high", false),
-      requestPolicy("adaptive", false),
-    ]);
+    const comparison = await postJson("/api/compare", {
+      query: queryInput.value,
+      role: roleInput.value,
+      role_verified: roleVerifiedInput.checked && !roleVerifiedInput.disabled,
+    });
+    const results = comparison.results;
     const adaptive = results.find((item) => item.mode === "adaptive");
     renderResult(adaptive);
     renderComparison(results);

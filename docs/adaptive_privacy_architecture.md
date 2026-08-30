@@ -25,6 +25,9 @@ path.
 - Cross-session state contains only SHA-256 principal/document references,
   attribute categories, purpose labels, counters, and timestamps. It does not
   store raw principal IDs, query text, contexts, or private values.
+- Fixed-low/fixed-high and the raw three-way comparison are synthetic evaluation
+  controls. The normal query endpoint always enforces purpose and ledger policy,
+  even when multi-turn session memory is disabled.
 
 ## Offline flow
 
