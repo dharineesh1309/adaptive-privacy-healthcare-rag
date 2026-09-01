@@ -52,6 +52,7 @@ class SessionAwarePrivacyPipeline:
         role_verified: bool = False,
         purpose: str = "general_information",
         principal_id: str = "lab-user-01",
+        top_k: int | None = None,
     ) -> dict[str, Any]:
         started = time.perf_counter()
         role_decision = self.pipeline.role_assurance.resolve(role, role_verified)
@@ -68,8 +69,10 @@ class SessionAwarePrivacyPipeline:
             query_level=query_decision.level,
         )
         retrieval_query = self.pipeline.classifier.retrieval_query(query)
-        top_k = int(self.pipeline.config.get("retrieval", {}).get("top_k", 3))
-        retrieved = self.pipeline.retriever.retrieve(retrieval_query, top_k)
+        retrieval_top_k = top_k or int(
+            self.pipeline.config.get("retrieval", {}).get("top_k", 3)
+        )
+        retrieved = self.pipeline.retriever.retrieve(retrieval_query, retrieval_top_k)
         forced_level = {
             "fixed_low": RiskLevel.LOW,
             "fixed_high": RiskLevel.HIGH,
@@ -162,6 +165,7 @@ class SessionAwarePrivacyPipeline:
                 mode=mode,
                 minimum_tier=minimum_tier,
                 role_verified=role_verified,
+                top_k=retrieval_top_k,
             )
             response = result.to_dict()
             tiers = {

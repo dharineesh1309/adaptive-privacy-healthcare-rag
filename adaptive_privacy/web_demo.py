@@ -90,6 +90,10 @@ class WebDemoApplication:
         role_verified = bool(payload.get("role_verified", False))
         purpose = str(payload.get("purpose", "general_information")).strip().lower()
         principal_id = str(payload.get("principal_id", "lab-user-01")).strip()
+        requested_top_k = payload.get("top_k")
+        top_k = None if requested_top_k is None else int(requested_top_k)
+        if top_k is not None and not 1 <= top_k <= 5:
+            raise ValueError("top_k must be between 1 and 5.")
         if purpose not in ALLOWED_PURPOSES:
             raise ValueError(f"Unsupported purpose: {purpose}")
         if session_aware and not session_id:
@@ -104,6 +108,7 @@ class WebDemoApplication:
             role_verified=role_verified,
             purpose=purpose,
             principal_id=principal_id,
+            top_k=top_k,
         )
         response["dataset"] = self.dataset_name
         return response

@@ -209,7 +209,7 @@ async function postJson(path, payload) {
   return data;
 }
 
-async function requestPolicy(mode, useSession = sessionToggle.checked) {
+async function requestPolicy(mode, useSession = sessionToggle.checked, topK = null) {
   return postJson("/api/query", {
     query: queryInput.value,
     role: roleInput.value,
@@ -219,6 +219,7 @@ async function requestPolicy(mode, useSession = sessionToggle.checked) {
     role_verified: roleVerifiedInput.checked && !roleVerifiedInput.disabled,
     session_aware: Boolean(useSession && sessionId),
     session_id: useSession ? sessionId : null,
+    top_k: topK,
   });
 }
 
@@ -370,11 +371,11 @@ ledgerAttackButton.addEventListener("click", async () => {
     await createSession("create");
     queryInput.value = "What age group is the patient with diabetes in?";
     ledgerAttackButton.textContent = "Session 1: first disclosure...";
-    renderResult(await requestPolicy("fixed_low", true));
+    renderResult(await requestPolicy("fixed_low", true, 1));
     await createSession("create");
     queryInput.value = "What age group is the patient with migraine in?";
     ledgerAttackButton.textContent = "Session 2: reset attack...";
-    renderResult(await requestPolicy("fixed_low", true));
+    renderResult(await requestPolicy("fixed_low", true, 1));
   } catch (error) {
     errorBox.textContent = error.message;
     errorBox.hidden = false;
