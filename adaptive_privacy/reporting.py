@@ -273,6 +273,7 @@ def generate_final_report(
         "- The external benchmark is synthetic, English-only, and its scenario-isolated test distribution caused substantial learned-model overblocking.",
         "- The purpose and ledger benchmark has five controlled scenarios; budgets and purpose rules are hand-configured rather than learned or legally validated.",
         "- The persistent ledger is application-level disclosure accounting, not differential privacy, and principal IDs require trustworthy identity binding in production.",
+        "- The ledger-reset endpoint is a lab control; it must be removed or restricted to authorized administrators in production.",
         "- Fixed-low/fixed-high modes and the synthetic comparison endpoint are evaluation controls and must not be exposed as user-selectable production policy overrides.",
         "",
         "## Conclusion",

@@ -28,6 +28,8 @@ path.
 - Fixed-low/fixed-high and the raw three-way comparison are synthetic evaluation
   controls. The normal query endpoint always enforces purpose and ledger policy,
   even when multi-turn session memory is disabled.
+- The ledger-reset endpoint exists only to make experiments reproducible. A real
+  deployment must remove it or authorize it as a privileged administrative action.
 
 ## Offline flow
 

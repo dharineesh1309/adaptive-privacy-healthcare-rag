@@ -130,6 +130,8 @@ Select **Run cross-session reset attack** to see a first disclosure allowed in o
 session and a second targeted disclosure blocked after a fresh session is created
 for the same principal. Turning off multi-turn memory starts a fresh session per
 request, but purpose enforcement and the persistent principal ledger remain active.
+The ledger-reset button is a lab convenience; a deployment must remove it or
+protect it with administrator authorization.
 
 Create a clean lab-submission archive after generating both experiment reports:
 
