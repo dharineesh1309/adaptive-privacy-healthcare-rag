@@ -152,6 +152,13 @@ class SessionAwarePrivacyPipeline:
                 "latency_ms": round((time.perf_counter() - started) * 1000.0, 3),
                 "role_assurance": role_decision.to_dict(),
                 "security_events": [],
+                "generation": {
+                    **self.pipeline.generation_status(),
+                    "mode": "blocked_before_generation",
+                    "called": False,
+                    "cached": False,
+                    "reason": "request blocked by deterministic privacy policy",
+                },
             }
             audit_event = dict(response)
             audit_event["session"] = session_decision.to_dict()

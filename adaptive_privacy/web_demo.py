@@ -11,6 +11,7 @@ from typing import Any
 from .chatdoctor import prepare_chatdoctor_benchmark
 from .config import PROJECT_ROOT, load_config
 from .io import load_json
+from .llm_generator import BudgetedGroqGenerator
 from .pipeline import AdaptivePrivacyPipeline
 from .privacy_ledger import PersistentPrivacyLedger
 from .session_pipeline import SessionAwarePrivacyPipeline
@@ -59,6 +60,7 @@ class WebDemoApplication:
             "purpose_aware": True,
             "persistent_ledger": True,
             "purposes": sorted(ALLOWED_PURPOSES),
+            "generation": self.pipeline.generation_status(),
         }
 
     def create_session(self, principal_id: str = "lab-user-01") -> dict[str, Any]:
@@ -130,6 +132,7 @@ class WebDemoApplication:
                 role=role,
                 mode=mode,
                 role_verified=role_verified,
+                use_generator=False,
             ).to_dict()
             result["dataset"] = self.dataset_name
             result["evaluation_only"] = True
@@ -137,7 +140,9 @@ class WebDemoApplication:
         return {"results": results, "evaluation_only": True}
 
 
-def create_application(dataset: str = "synthetic") -> WebDemoApplication:
+def create_application(
+    dataset: str = "synthetic", enable_llm: bool = False
+) -> WebDemoApplication:
     config = load_config()
     if dataset == "synthetic":
         raw_documents = load_json(
@@ -161,9 +166,11 @@ def create_application(dataset: str = "synthetic") -> WebDemoApplication:
 
     documents = TierBuilder().build_many(raw_documents)
     audit_path = PROJECT_ROOT / "results" / "adaptive_privacy" / "web_audit.jsonl"
+    generator = BudgetedGroqGenerator(config) if enable_llm else None
     pipeline = AdaptivePrivacyPipeline(
         documents,
         config=config,
+        generator=generator,
         audit_path=str(audit_path),
     )
     return WebDemoApplication(pipeline, dataset_name)

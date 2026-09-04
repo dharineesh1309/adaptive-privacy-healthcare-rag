@@ -117,6 +117,7 @@ class PipelineResult:
     latency_ms: float
     role_assurance: dict[str, Any] = field(default_factory=dict)
     security_events: list[dict[str, Any]] = field(default_factory=list)
+    generation: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -131,4 +132,5 @@ class PipelineResult:
             "latency_ms": round(self.latency_ms, 3),
             "role_assurance": self.role_assurance,
             "security_events": self.security_events,
+            "generation": self.generation,
         }

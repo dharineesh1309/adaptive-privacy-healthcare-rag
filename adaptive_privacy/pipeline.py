@@ -45,6 +45,7 @@ class AdaptivePrivacyPipeline:
         mode: str = "adaptive",
         minimum_tier: RiskLevel | str | None = None,
         role_verified: bool = False,
+        use_generator: bool = True,
     ) -> PipelineResult:
         if mode not in {"adaptive", "fixed_low", "fixed_high"}:
             raise ValueError("mode must be adaptive, fixed_low or fixed_high")
@@ -88,10 +89,31 @@ class AdaptivePrivacyPipeline:
                 )
             decisions.append(decision)
 
-        if contexts:
+        if contexts and use_generator:
             draft_answer = self.generator(query, contexts)
+            generation = self._last_generation_metadata()
+        elif contexts:
+            draft_answer = extractive_generator(query, contexts)
+            generation = self.generation_status()
+            generation.update(
+                {
+                    "mode": "extractive_evaluation",
+                    "called": False,
+                    "cached": False,
+                    "reason": "external generation disabled for policy comparison",
+                }
+            )
         else:
             draft_answer = "No relevant protected context was found."
+            generation = self.generation_status()
+            generation.update(
+                {
+                    "mode": "no_context",
+                    "called": False,
+                    "cached": False,
+                    "reason": "no protected context reached generation",
+                }
+            )
 
         strictest_level = max(
             (decision.selected_tier for decision in decisions),
@@ -112,10 +134,39 @@ class AdaptivePrivacyPipeline:
             latency_ms=latency_ms,
             role_assurance=role_decision.to_dict(),
             security_events=security_events,
+            generation=generation,
         )
         audit_event = result.to_dict()
         self.audit.write(audit_event)
         return result
+
+    def generation_status(self) -> dict:
+        status = getattr(self.generator, "status", None)
+        if callable(status):
+            return dict(status())
+        if self.generator is extractive_generator:
+            return {
+                "provider": "local",
+                "model": "extractive",
+                "configured": True,
+                "mode": "extractive",
+                "called": False,
+                "cached": False,
+                "reason": "",
+            }
+        return {
+            "provider": "custom",
+            "model": getattr(self.generator, "__name__", "custom"),
+            "configured": True,
+            "mode": "custom",
+            "called": True,
+            "cached": False,
+            "reason": "",
+        }
+
+    def _last_generation_metadata(self) -> dict:
+        metadata = getattr(self.generator, "last_metadata", None)
+        return dict(metadata()) if callable(metadata) else self.generation_status()
 
 
 def extractive_generator(query: str, contexts: list[str]) -> str:

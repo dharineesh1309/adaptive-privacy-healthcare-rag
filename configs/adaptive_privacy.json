@@ -94,6 +94,24 @@
   "retrieval": {
     "top_k": 2
   },
+  "generation": {
+    "enabled": true,
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "base_url": "https://api.groq.com/openai/v1",
+    "api_key_env": "GROQ_API_KEY",
+    "temperature": 0.1,
+    "max_output_tokens": 350,
+    "timeout_seconds": 15,
+    "max_prompt_chars": 4000,
+    "max_contexts": 2,
+    "memory_cache": true,
+    "limits": {
+      "daily_attempts": 25,
+      "requests_per_minute": 5,
+      "daily_tokens": 40000
+    }
+  },
   "session": {
     "decay": 0.72,
     "thresholds": {
