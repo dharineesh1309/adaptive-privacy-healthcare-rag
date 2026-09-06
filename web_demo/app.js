@@ -82,11 +82,37 @@ function renderResult(data) {
   });
   setText("context-count", `${data.protected_contexts.length} served / ${data.policy_decisions.length} retrieved`);
   setText("answer", data.answer);
+  renderGeneration(data.generation || {});
   renderSession(data);
   renderLedger(data);
   renderSecurityEvents(data.security_events || []);
   emptyState.hidden = true;
   resultBox.hidden = false;
+}
+
+function renderGeneration(generation) {
+  const mode = generation.mode || "extractive";
+  const badge = document.getElementById("generation-mode");
+  const labels = {
+    llm: "Groq LLM",
+    llm_cache: "Groq cache",
+    extractive_fallback: "local fallback",
+    extractive_evaluation: "local comparison",
+    blocked_before_generation: "blocked before LLM",
+    no_context: "no generation",
+    extractive: "local extractive",
+  };
+  badge.textContent = labels[mode] || mode.replaceAll("_", " ");
+  badge.dataset.mode = mode;
+  const details = [];
+  if (generation.model && generation.provider === "groq") {
+    details.push(generation.model);
+  }
+  if (Number.isFinite(Number(generation.calls_remaining))) {
+    details.push(`${generation.calls_remaining}/${generation.daily_call_limit} LLM calls remaining today`);
+  }
+  if (generation.reason) details.push(generation.reason);
+  setText("generation-status", details.join(" · ") || "No external provider call was made.");
 }
 
 function renderSecurityEvents(events) {
@@ -229,7 +255,11 @@ async function loadHealth() {
     if (!response.ok) throw new Error("Health check failed");
     const data = await response.json();
     runtime.classList.add("is-ready");
-    setText("runtime-label", `${data.documents} protected documents · purpose + ledger active`);
+    const generation = data.generation || {};
+    const generatorLabel = generation.configured
+      ? `Groq ready · ${generation.calls_remaining}/${generation.daily_call_limit} calls left`
+      : "local fallback ready";
+    setText("runtime-label", `${data.documents} protected documents · ${generatorLabel}`);
   } catch (error) {
     setText("runtime-label", "Local pipeline unavailable");
   }

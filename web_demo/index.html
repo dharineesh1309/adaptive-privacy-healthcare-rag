@@ -27,6 +27,7 @@
     <span>Role assurance</span><b aria-hidden="true">&rarr;</b>
     <span>Session + ledger</span><b aria-hidden="true">&rarr;</b>
     <span>Tier policy</span><b aria-hidden="true">&rarr;</b>
+    <span>Budgeted generation</span><b aria-hidden="true">&rarr;</b>
     <span>Output guard</span>
   </section>
 
@@ -201,7 +202,14 @@
           <div id="contexts" class="contexts"></div>
         </div>
 
-        <div class="answer-block"><span class="meta-label">Guarded answer</span><p id="answer"></p></div>
+        <div class="answer-block">
+          <div class="answer-heading">
+            <span class="meta-label">Guarded answer</span>
+            <span id="generation-mode" class="generation-badge">local extractive</span>
+          </div>
+          <p id="answer"></p>
+          <div id="generation-status" class="generation-status"></div>
+        </div>
 
         <div id="comparison-block" class="comparison-block" hidden>
           <div class="block-heading">

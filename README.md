@@ -120,6 +120,23 @@ Launch the local browser demonstration:
 python scripts/run_web_demo.py
 ```
 
+The web demo can use Groq's `openai/gpt-oss-20b` model for final answer
+generation. Set the key only in the process environment; never put it in this
+repository or in the browser UI:
+
+```powershell
+$env:GROQ_API_KEY = Read-Host "Enter Groq API key"
+python scripts/run_web_demo.py
+```
+
+Only policy-approved, already-masked contexts are sent to Groq. The provider is
+limited locally to 25 attempted calls/day, 5 calls/minute, 40,000 tokens/day,
+350 output tokens/call, two contexts, and a 15-second timeout. Repeated requests
+use a memory-only cache. Missing credentials, exhausted limits, timeouts, rate
+limits, or provider failures automatically use the local extractive generator.
+Blocked requests and **Compare all three** make no provider calls. Start with
+`--no-llm` to force the fully local generator.
+
 Then open `http://127.0.0.1:8765`. Use `--dataset chatdoctor` to run the
 interface over the cached ChatDoctor sample. The server binds to localhost by
 default, serves only protected representations, and writes privacy-safe audit
@@ -205,9 +222,10 @@ Run the extension tests without installing third-party packages:
 python -m unittest discover -s tests -v
 ```
 
-Generated evaluation files are written to `results/adaptive_privacy/`. The default
-answer generator is intentionally extractive and dependency-free; it can later be
-replaced by an API or local LLM adapter without changing the privacy policy layer.
+Generated evaluation files are written to `results/adaptive_privacy/`. Evaluation
+scripts and direct pipeline construction remain extractive and dependency-free;
+only the web-demo launcher enables the budgeted Groq adapter. The LLM generates
+wording but never selects authorization, privacy tiers, purpose rules, or budgets.
 
 When the original `run_pipeline.py` completes reconstruction, it now also writes
 `<dataset>_privacy_tiers.json` and adds `retrieved_contexts_low`,

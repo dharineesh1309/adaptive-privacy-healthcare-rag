@@ -4,6 +4,7 @@ import copy
 import unittest
 import json
 import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 from adaptive_privacy.benchmark import generate_heldout_benchmark
@@ -18,6 +19,7 @@ from adaptive_privacy.evaluation import literal_present
 from adaptive_privacy.integrity import PromptInjectionGuard
 from adaptive_privacy.external_injection import evaluate_external_rows
 from adaptive_privacy.learned_detector import TfidfCentroidInjectionDetector
+from adaptive_privacy.llm_generator import BudgetedGroqGenerator, ProviderRequestError
 from adaptive_privacy.ledger_evaluation import evaluate_privacy_ledger
 from adaptive_privacy.models import RiskLevel
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
@@ -200,6 +202,74 @@ class ExternalDetectorTests(unittest.TestCase):
         self.assertGreater(len(detector.vocabulary), 0)
 
 
+class BudgetedGroqGeneratorTests(unittest.TestCase):
+    def configured_generator(self, directory, transport, daily_attempts=25):
+        config = copy.deepcopy(load_config())
+        config["generation"]["limits"]["daily_attempts"] = daily_attempts
+        return BudgetedGroqGenerator(
+            config,
+            usage_path=Path(directory) / "usage.json",
+            transport=transport,
+        )
+
+    def test_uses_only_supplied_protected_context_and_caches_repeat(self):
+        requests = []
+
+        def transport(base_url, api_key, payload, timeout):
+            requests.append(payload)
+            return "Metformin was recommended.", 41
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"GROQ_API_KEY": "unit-test-key"}
+        ):
+            generator = self.configured_generator(directory, transport)
+            protected = "[PERSON] was prescribed Metformin."
+            first = generator("What treatment was recommended?", [protected])
+            second = generator("What treatment was recommended?", [protected])
+            self.assertEqual(first, second)
+            self.assertEqual(1, len(requests))
+            prompt = requests[0]["messages"][1]["content"]
+            self.assertIn(protected, prompt)
+            self.assertEqual(350, requests[0]["max_tokens"])
+            self.assertEqual("llm_cache", generator.last_metadata()["mode"])
+            usage_text = (Path(directory) / "usage.json").read_text(encoding="utf-8")
+            self.assertNotIn("treatment", usage_text.lower())
+            self.assertNotIn("Metformin", usage_text)
+
+    def test_daily_cap_falls_back_without_second_provider_call(self):
+        calls = []
+
+        def transport(base_url, api_key, payload, timeout):
+            calls.append(payload)
+            return "Generated answer.", 20
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"GROQ_API_KEY": "unit-test-key"}
+        ):
+            generator = self.configured_generator(directory, transport, daily_attempts=1)
+            self.assertEqual("Generated answer.", generator("question one", ["Context one."]))
+            fallback = generator("question two", ["Context two."])
+            self.assertEqual(1, len(calls))
+            self.assertIn("Context two", fallback)
+            self.assertEqual("extractive_fallback", generator.last_metadata()["mode"])
+            self.assertIn("daily call cap", generator.last_metadata()["reason"])
+
+    def test_provider_failure_uses_extractive_fallback(self):
+        def failing_transport(base_url, api_key, payload, timeout):
+            raise ProviderRequestError("provider rate limit reached")
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"GROQ_API_KEY": "unit-test-key"}
+        ):
+            generator = self.configured_generator(directory, failing_transport)
+            answer = generator("What is supported?", ["A supported local answer."])
+            self.assertIn("supported local answer", answer)
+            metadata = generator.last_metadata()
+            self.assertEqual("extractive_fallback", metadata["mode"])
+            self.assertTrue(metadata["called"])
+            self.assertEqual("provider rate limit reached", metadata["reason"])
+
+
 class PipelineTests(unittest.TestCase):
     def setUp(self):
         documents = TierBuilder().build_many(
@@ -246,6 +316,22 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertIn("Metformin", result.answer)
         self.assertNotIn("migraine", result.answer.lower())
+
+    def test_policy_comparison_disables_external_generator(self):
+        calls = []
+
+        def generator(query, contexts):
+            calls.append((query, contexts))
+            return "external answer"
+
+        pipeline = AdaptivePrivacyPipeline(
+            self.pipeline.documents, config=load_config(), generator=generator
+        )
+        result = pipeline.process(
+            "What treatment was recommended?", use_generator=False
+        )
+        self.assertEqual([], calls)
+        self.assertEqual("extractive_evaluation", result.generation["mode"])
 
     def test_verified_role_changes_tier_for_same_low_risk_query(self):
         query = "Explain metformin for diabetes in general."
@@ -367,6 +453,8 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(result["blocked"])
         self.assertFalse(result["purpose_decision"]["allowed"])
         self.assertEqual([], result["protected_contexts"])
+        self.assertEqual("blocked_before_generation", result["generation"]["mode"])
+        self.assertFalse(result["generation"]["called"])
 
     def test_persistent_ledger_blocks_reset_evasion_without_storing_values(self):
         config = copy.deepcopy(load_config())

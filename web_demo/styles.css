@@ -561,6 +561,38 @@ textarea:focus, select:focus, input:focus, button:focus-visible {
 
 .answer-block p { margin: 0; font-size: 0.92rem; line-height: 1.6; }
 
+.answer-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.generation-badge {
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.generation-badge[data-mode="extractive_fallback"],
+.generation-badge[data-mode="blocked_before_generation"] {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.generation-status {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .comparison-block {
   margin-top: 18px;
   padding-top: 18px;
