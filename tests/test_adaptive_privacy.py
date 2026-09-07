@@ -333,6 +333,23 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual([], calls)
         self.assertEqual("extractive_evaluation", result.generation["mode"])
 
+    def test_external_generator_output_still_passes_through_privacy_guard(self):
+        def leaking_generator(query, contexts):
+            return (
+                "John Smith lives at 23 Green Road, phone 9876543210, "
+                "email john.smith@example.com."
+            )
+
+        pipeline = AdaptivePrivacyPipeline(
+            self.pipeline.documents,
+            config=load_config(),
+            generator=leaking_generator,
+        )
+        result = pipeline.process("What treatment was recommended?", role="public")
+        self.assertTrue(result.blocked)
+        self.assertNotIn("John Smith", result.answer)
+        self.assertNotIn("9876543210", result.answer)
+
     def test_verified_role_changes_tier_for_same_low_risk_query(self):
         query = "Explain metformin for diabetes in general."
         public_result = self.pipeline.process(query, role="public", top_k=1)
