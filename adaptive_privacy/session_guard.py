@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 import uuid
@@ -36,10 +37,14 @@ LEVEL_ORDER = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
 
 def infer_requested_types(query: str) -> set[str]:
     normalized_query = " ".join(query.lower().split())
+    # Whole words only (optional plural): "age" must not match "average"/"manage".
     return {
         entity_type
         for entity_type, patterns in REQUEST_PATTERNS.items()
-        if any(pattern in normalized_query for pattern in patterns)
+        if any(
+            re.search(rf"\b{re.escape(pattern)}s?\b", normalized_query)
+            for pattern in patterns
+        )
     }
 
 

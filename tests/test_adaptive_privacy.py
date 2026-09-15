@@ -27,6 +27,7 @@ from adaptive_privacy.privacy_ledger import PersistentPrivacyLedger
 from adaptive_privacy.policy_engine import PolicyEngine
 from adaptive_privacy.reporting import generate_final_report
 from adaptive_privacy.session_evaluation import evaluate_ablations, evaluate_sessions
+from adaptive_privacy.session_guard import infer_requested_types
 from adaptive_privacy.session_pipeline import SessionAwarePrivacyPipeline
 from adaptive_privacy.risk_classifier import QueryRiskClassifier
 from adaptive_privacy.tier_builder import TierBuilder
@@ -115,6 +116,12 @@ class RiskTests(unittest.TestCase):
         self.assertTrue(decision.forced_high)
         policy = PolicyEngine(self.config).decide("DOC-1", 0.1, decision)
         self.assertEqual(RiskLevel.HIGH, policy.selected_tier)
+
+    def test_requested_types_match_whole_words_only(self):
+        self.assertEqual(set(), infer_requested_types("How do clinics manage the average stay?"))
+        self.assertEqual(set(), infer_requested_types("Explain the payment update process"))
+        self.assertEqual({"age"}, infer_requested_types("What ages are affected?"))
+        self.assertEqual({"salary"}, infer_requested_types("Show the employee salary"))
 
 
 class FrozenChallengeTests(unittest.TestCase):
