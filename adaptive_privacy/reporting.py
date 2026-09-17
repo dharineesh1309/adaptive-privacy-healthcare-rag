@@ -161,10 +161,14 @@ def generate_final_report(
                     f"| {item['variant']} | {percent(item['attack_block_rate'])} | "
                     f"{percent(item['benign_block_rate'])} | {mean_block_text} |"
                 )
+            rates = {
+                item["variant"]: percent(item["attack_block_rate"])
+                for item in session_summary["ablations"]
+            }
             lines.extend(
                 [
                     "",
-                    "Removing behavioral memory reduced the attack block rate to 0% in this scripted benchmark; removing the explicit attack-pattern signal also reduced it. This demonstrates that the result is not produced by the single-turn classifier alone.",
+                    f"Removing behavioral memory changed the attack block rate from {rates.get('full_guard', '-')} to {rates.get('no_behavioral_memory', '-')} in this scripted benchmark, and removing the explicit attack-pattern signal gave {rates.get('no_attack_pattern_signal', '-')}. Attacks still blocked without memory are stopped by the per-request purpose policy, so cumulative session state and purpose binding contribute separately.",
                     "",
                 ]
             )

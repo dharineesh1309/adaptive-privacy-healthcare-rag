@@ -27,13 +27,13 @@ The following diagram illustrates the lifecycle of our framework, showcasing the
 
 Below is an overview of the key directories and files in this repository. Click the links below to navigate to the folders and files:
 
-*   **[`configs/`](file:///c:/code/ppr-code/configs)**: Contains the multi-agent system configurations (`agents_config.yaml`).
-*   **[`agents/`](file:///c:/code/ppr-code/agents)**: Core directory containing agent implementation modules (System coordinator, LLM client, Privacy Extraction, Semantic Analysis, and Reconstruction agents).
-*   **[`prompts/`](file:///c:/code/ppr-code/prompts)**: Prompt templates used by the respective agents.
-*   **[`data_preparation/`](file:///c:/code/ppr-code/data_preparation)**: Scripts to download, parse, and partition ChatDoctor and Wiki-PII datasets.
-*   **[`retrieval/`](file:///c:/code/ppr-code/retrieval)**: Code for generating dense and sparse BM25 retrieval contexts.
-*   **[`run_pipeline.py`](file:///c:/code/ppr-code/run_pipeline.py)**: The main entry point to execute the offline sanitization pipeline.
-*   **[`requirements.txt`](file:///c:/code/ppr-code/requirements.txt)**: Python environment package declarations.
+*   **[`configs/`](configs)**: Contains the multi-agent system configurations (`agents_config.yaml`).
+*   **[`agents/`](agents)**: Core directory containing agent implementation modules (System coordinator, LLM client, Privacy Extraction, Semantic Analysis, and Reconstruction agents).
+*   **[`prompts/`](prompts)**: Prompt templates used by the respective agents.
+*   **[`data_preparation/`](data_preparation)**: Scripts to download, parse, and partition ChatDoctor and Wiki-PII datasets.
+*   **[`retrieval/`](retrieval)**: Code for generating dense and sparse BM25 retrieval contexts.
+*   **[`run_pipeline.py`](run_pipeline.py)**: The main entry point to execute the offline sanitization pipeline.
+*   **[`requirements.txt`](requirements.txt)**: Python environment package declarations.
 
 ---
 
@@ -47,7 +47,7 @@ pip install pymupdf
 ```
 
 ### 2. Configuration
-Configure model paths and settings (API mode or offline vLLM mode) in **[`configs/agents_config.yaml`](file:///c:/code/ppr-code/configs/agents_config.yaml)**.
+Configure model paths and settings (API mode or offline vLLM mode) in **[`configs/agents_config.yaml`](configs/agents_config.yaml)**.
 
 ### 3. Usage
 Run a quick test or execute the sanitization pipeline:
