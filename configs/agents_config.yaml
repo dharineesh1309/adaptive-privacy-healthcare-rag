@@ -2,14 +2,20 @@
 
 llm_settings:
   # Mode of LLM execution: "api" (remote API via OpenAI client) or "vllm" (local offline inference engine)
-  mode: "vllm"
-  
+  # Lab default: Groq's free OpenAI-compatible API (no GPU needed). Set "vllm" for local GPU inference.
+  mode: "api"
+
   # API Mode settings (OpenAI-compatible client)
   api:
-    api_key: ""             # Leave empty to read from environment variable OPENAI_API_KEY
-    base_url: "https://api.openai.com/v1"
-    model: "gpt-4o-mini"
-    
+    api_key: ""             # Leave empty to read from the environment variable named by api_key_env
+    api_key_env: "GROQ_API_KEY"
+    base_url: "https://api.groq.com/openai/v1"
+    model: "openai/gpt-oss-20b"
+    max_workers: 2          # Groq free tier allows 8K tokens/minute
+    max_retries: 8          # back off and retry on HTTP 429
+    extra_body:
+      reasoning_effort: "low"
+
   # vLLM Mode settings (Offline Inference Engine)
   vllm:
     model_path: "models/llms/Qwen3.5-4B"  # Path to a locally downloaded model directory (e.g. models/DeepSeek-R1-Distill-Qwen-7B)
@@ -20,7 +26,7 @@ llm_settings:
 
 # Common parameters for text generation (used by both API and vLLM where supported)
 generation_params:
-  max_new_tokens: 10240
+  max_new_tokens: 3000      # must stay below the provider's per-minute token limit
   temperature: 0.6
   top_p: 0.95
   top_k: 20

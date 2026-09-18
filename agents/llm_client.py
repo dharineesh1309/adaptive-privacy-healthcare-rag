@@ -63,11 +63,18 @@ class LLMClient:
             provider = "openai"
             
             # Retrieve API Key from config or env variable
-            api_key = api_cfg.get("api_key") or os.getenv("OPENAI_API_KEY")
+            api_key = api_cfg.get("api_key") or os.getenv(api_cfg.get("api_key_env", "OPENAI_API_KEY"))
             base_url = api_cfg.get("base_url", "https://api.openai.com/v1")
             self.model = api_cfg.get("model", "gpt-4o-mini")
-            
-            self.client = OpenAI(api_key=api_key, base_url=base_url)
+            # Free-tier providers (e.g. Groq) need few workers and 429 retries.
+            self.max_workers = int(api_cfg.get("max_workers", 16))
+            self.extra_body = api_cfg.get("extra_body") or None
+
+            self.client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+                max_retries=int(api_cfg.get("max_retries", 2)),
+            )
         elif self.mode == "vllm":
             # Model details are read when initializing the engine
             vllm_cfg = llm_settings.get("vllm", {})
@@ -131,7 +138,8 @@ class LLMClient:
             temperature=self.gen_params.get("temperature", 0.6),
             max_tokens=self.gen_params.get("max_new_tokens", 10240),
             top_p=self.gen_params.get("top_p", 0.95),
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            extra_body=self.extra_body,
         )
         return response.choices[0].message.content
 
@@ -147,7 +155,7 @@ class LLMClient:
         if self.mode == "api":
             from tqdm import tqdm
             results = [None] * len(prompts)
-            max_workers = min(len(prompts), 16)
+            max_workers = min(len(prompts), self.max_workers)
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
                     executor.submit(self._generate_single_api, prompt): idx 
