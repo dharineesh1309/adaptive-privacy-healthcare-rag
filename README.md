@@ -130,8 +130,9 @@ python scripts/run_web_demo.py
 ```
 
 Only policy-approved, already-masked contexts are sent to Groq. The provider is
-limited locally to 25 attempted calls/day, 5 calls/minute, 40,000 tokens/day,
-350 output tokens/call, two contexts, and a 15-second timeout. Repeated requests
+limited locally to 300 attempted calls/day, 25 calls/minute, 150,000 tokens/day,
+350 output tokens/call, two contexts, and a 15-second timeout (below Groq's free
+plan limits of 1,000 requests and 200,000 tokens/day). Repeated requests
 use a memory-only cache. Missing credentials, exhausted limits, timeouts, rate
 limits, or provider failures automatically use the local extractive generator.
 Blocked requests and **Compare all three** make no provider calls. Start with

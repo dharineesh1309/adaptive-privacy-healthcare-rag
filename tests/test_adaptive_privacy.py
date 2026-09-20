@@ -16,6 +16,12 @@ from adaptive_privacy.chatdoctor import prepare_chatdoctor_benchmark
 from adaptive_privacy.config import PROJECT_ROOT, load_config
 from adaptive_privacy.detector import PrivacyDetector
 from adaptive_privacy.evaluation import literal_present
+from adaptive_privacy.inference_attack import (
+    NO_RECORD,
+    GroqInferenceAttacker,
+    diagnosis_recovered,
+    evaluate_inference_attack,
+)
 from adaptive_privacy.integrity import PromptInjectionGuard
 from adaptive_privacy.external_injection import evaluate_external_rows
 from adaptive_privacy.learned_detector import TfidfCentroidInjectionDetector
@@ -605,6 +611,54 @@ class PipelineTests(unittest.TestCase):
             by_name["no_behavioral_memory"]["attack_block_rate"],
             by_name["full_guard"]["attack_block_rate"],
         )
+
+
+class InferenceAttackTests(unittest.TestCase):
+    def test_diagnosis_match_is_conservative(self):
+        self.assertTrue(diagnosis_recovered("chronic migraine", "Migraines"))
+        self.assertTrue(diagnosis_recovered("diabetes", "type 2 diabetes mellitus"))
+        self.assertTrue(diagnosis_recovered("infection", "urinary tract infection"))
+        self.assertFalse(diagnosis_recovered("viral diarrhea", "viral pneumonia"))
+        self.assertFalse(diagnosis_recovered("diabetes", "unknown"))
+
+    def test_evaluation_scores_versions_against_prior(self):
+        guesses = {NO_RECORD: "common cold", "uses metformin": "diabetes"}
+        attacker = lambda text: {"diagnosis": guesses.get(text, "unknown"), "evidence": []}
+        case = {
+            "document_id": "D1",
+            "dataset": "unit",
+            "diagnosis": "diabetes",
+            "versions": {"fixed_high": "uses metformin", "blank": "[MEDICAL CONDITION]"},
+        }
+        _, summary = evaluate_inference_attack([case], attacker)
+        self.assertEqual(1.0, summary["versions"]["fixed_high"]["recovery_rate"])
+        self.assertEqual(0.0, summary["versions"]["fixed_high"]["literal_visible_rate"])
+        self.assertEqual(0.0, summary["versions"]["blank"]["recovery_rate"])
+        self.assertEqual(0.0, summary["prior"]["recovery_rate"])
+
+    def test_attacker_retries_rate_limit_then_caches(self):
+        calls = []
+
+        def transport(base_url, api_key, payload, timeout):
+            calls.append(payload)
+            if len(calls) == 1:
+                raise ProviderRequestError("provider rate limit reached")
+            return '{"diagnosis": "asthma", "evidence": ["inhaler"]}', 50
+
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            "os.environ", {"GROQ_API_KEY": "unit-test-key"}
+        ):
+            attacker = GroqInferenceAttacker(
+                load_config(),
+                Path(directory) / "cache.json",
+                transport=transport,
+                sleep=lambda seconds: None,
+                usage_path=Path(directory) / "usage.json",
+            )
+            self.assertEqual("asthma", attacker("uses an inhaler")["diagnosis"])
+            self.assertEqual("asthma", attacker("uses an inhaler")["diagnosis"])
+            self.assertEqual(2, len(calls))
+            self.assertEqual({"type": "json_object"}, calls[0]["response_format"])
 
 
 class HeldoutBenchmarkTests(unittest.TestCase):
