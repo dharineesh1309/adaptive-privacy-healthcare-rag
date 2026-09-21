@@ -31,7 +31,7 @@ class AdaptivePrivacyPipeline:
         self.documents = documents
         self.classifier = QueryRiskClassifier(self.config)
         self.role_assurance = RoleAssurancePolicy()
-        self.policy_engine = PolicyEngine(self.config)
+        self.policy_engine = PolicyEngine(self.config, documents)
         self.retriever = BM25Retriever(documents)
         self.guard = PrivacyGuard()
         self.generator = generator or extractive_generator

@@ -94,6 +94,9 @@
   "retrieval": {
     "top_k": 2
   },
+  "reidentification": {
+    "k_min": 2
+  },
   "generation": {
     "enabled": true,
     "provider": "groq",

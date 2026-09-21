@@ -19,7 +19,11 @@ from adaptive_privacy.chatdoctor import (
     prepare_chatdoctor_benchmark,
 )
 from adaptive_privacy.config import load_config
-from adaptive_privacy.evaluation import evaluate_ground_truth, render_markdown_report
+from adaptive_privacy.evaluation import (
+    evaluate_ground_truth,
+    reidentification_ablation,
+    render_markdown_report,
+)
 from adaptive_privacy.io import load_json, save_json
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.tier_builder import TierBuilder
@@ -58,10 +62,13 @@ def main() -> None:
         print(f"Downloaded {len(rows)} ChatDoctor rows -> {args.cache}")
 
     documents, queries = prepare_chatdoctor_benchmark(rows, source)
-    pipeline = AdaptivePrivacyPipeline(
-        TierBuilder().build_many(documents), config=load_config(args.config)
+    tiered_documents = TierBuilder().build_many(documents)
+    config = load_config(args.config)
+    pipeline = AdaptivePrivacyPipeline(tiered_documents, config=config)
+    result_rows, summary = evaluate_ground_truth(
+        documents, queries, pipeline,
+        ablations=reidentification_ablation(tiered_documents, config),
     )
-    result_rows, summary = evaluate_ground_truth(documents, queries, pipeline)
     summary["benchmark"].update(
         {
             "name": "ChatDoctor sample with controlled synthetic PII",

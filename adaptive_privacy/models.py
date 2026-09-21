@@ -90,6 +90,8 @@ class PolicyDecision:
     document_score: float
     role_score: float
     reasons: list[str] = field(default_factory=list)
+    # Records sharing the visible quasi-identifiers; None when no sensitive value is shown.
+    k_anonymity: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)

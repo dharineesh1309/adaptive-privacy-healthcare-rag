@@ -12,16 +12,19 @@ def percent(value: float) -> str:
 
 def experiment_table(summary: dict[str, Any]) -> list[str]:
     lines = [
-        "| Policy | Direct retained | Quasi retained | Sensitive retained | Utility retained | Mean latency |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Policy | Direct retained | Quasi retained | Sensitive retained | Utility retained | Unique sensitive releases | Mean latency |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
-    for mode in ("fixed_low", "fixed_high", "adaptive"):
-        metrics = summary["modes"][mode]
+    for mode in ("fixed_low", "fixed_high", "adaptive_no_reid_check", "adaptive"):
+        metrics = summary["modes"].get(mode)
+        if metrics is None:
+            continue
         lines.append(
             f"| {mode} | {percent(metrics['direct_retention'])} | "
             f"{percent(metrics['quasi_retention'])} | "
             f"{percent(metrics['sensitive_retention'])} | "
             f"{percent(metrics['utility_retention'])} | "
+            f"{percent(metrics.get('unique_sensitive_release_rate', 0.0))} | "
             f"{metrics['mean_latency_ms']:.3f} ms |"
         )
     return lines

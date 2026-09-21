@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import re
 import statistics
 from collections import Counter, defaultdict
 from typing import Any
 
+from .models import DocumentVariants
 from .pipeline import AdaptivePrivacyPipeline
 
 
@@ -26,18 +28,33 @@ def literal_present(value: str, text: str) -> bool:
     return re.search(rf"(?<!\w){re.escape(expected)}(?!\w)", candidate) is not None
 
 
+def reidentification_ablation(
+    documents: list[DocumentVariants], config: dict[str, Any]
+) -> dict[str, AdaptivePrivacyPipeline]:
+    """Adaptive pipeline with the release-time k-anonymity check disabled."""
+    variant = copy.deepcopy(config)
+    variant["reidentification"] = {"k_min": 1}
+    return {"adaptive_no_reid_check": AdaptivePrivacyPipeline(documents, config=variant)}
+
+
 def evaluate_ground_truth(
     documents: list[dict[str, Any]],
     queries: list[dict[str, Any]],
     pipeline: AdaptivePrivacyPipeline,
     modes: tuple[str, ...] = ("fixed_low", "fixed_high", "adaptive"),
+    ablations: dict[str, AdaptivePrivacyPipeline] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Ablations are extra pipelines evaluated in adaptive mode under their label."""
     documents_by_id = {str(item["document_id"]): item for item in documents}
     rows: list[dict[str, Any]] = []
+    runs = [(mode, pipeline, mode) for mode in modes] + [
+        (label, ablated, "adaptive") for label, ablated in (ablations or {}).items()
+    ]
+    modes = tuple(label for label, _, _ in runs)
 
     for query_case in queries:
-        for mode in modes:
-            result = pipeline.process(
+        for label, runner, mode in runs:
+            result = runner.process(
                 query_case["query"],
                 role=query_case.get("role", "unknown"),
                 role_verified=bool(query_case.get("role_verified", False)),
@@ -70,7 +87,7 @@ def evaluate_ground_truth(
             rows.append(
                 {
                     "query_id": query_case["query_id"],
-                    "mode": mode,
+                    "mode": label,
                     "role": query_case.get("role", "unknown"),
                     "role_verified": int(query_case.get("role_verified", False)),
                     "expected_query_risk": query_case["expected_query_risk"],
@@ -95,6 +112,12 @@ def evaluate_ground_truth(
                     ),
                     "latency_ms": round(result.latency_ms, 4),
                     "blocked": int(result.blocked),
+                    # Released contexts showing a sensitive value in a record unique (k=1)
+                    # on its visible quasi-identifiers.
+                    "unique_sensitive_releases": sum(
+                        item.k_anonymity is not None and item.k_anonymity < 2
+                        for item in result.policy_decisions
+                    ),
                 }
             )
 
@@ -156,6 +179,11 @@ def evaluate_ground_truth(
                 statistics.fmean(row["latency_ms"] for row in mode_rows), 4
             ),
             "blocked_answers": sum(row["blocked"] for row in mode_rows),
+            "unique_sensitive_release_rate": round(
+                sum(row["unique_sensitive_releases"] for row in mode_rows)
+                / max(1, sum(row["retrieved_documents"] for row in mode_rows)),
+                4,
+            ),
             "selected_tier_counts": dict(sorted(tier_counts.items())),
             "by_expected_query_risk": by_expected_risk,
         }
@@ -171,13 +199,14 @@ def render_markdown_report(summary: dict[str, Any]) -> str:
         f"Queries: {benchmark['queries']}  ",
         "Ground truth: explicit annotations independent of the production detector",
         "",
-        "| Mode | Risk accuracy | Retrieval hit | Direct retention | Quasi retention | Sensitive retention | Utility retention | Mean latency (ms) |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| Mode | Risk accuracy | Retrieval hit | Direct retention | Quasi retention | Sensitive retention | Utility retention | Unique sensitive releases | Mean latency (ms) |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for mode, metrics in summary["modes"].items():
         lines.append(
             "| {mode} | {risk:.1%} | {hit:.1%} | {direct:.1%} | {quasi:.1%} | "
-            "{sensitive:.1%} | {utility:.1%} | {latency:.3f} |".format(
+            "{sensitive:.1%} | {utility:.1%} | {unique:.1%} | {latency:.3f} |".format(
+                unique=metrics.get("unique_sensitive_release_rate", 0.0),
                 mode=mode,
                 risk=metrics["query_risk_accuracy"],
                 hit=metrics["retrieval_hit_rate"],
@@ -213,7 +242,7 @@ def render_markdown_report(summary: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "Retention is the fraction of annotated private values still visible; lower is better. Utility retention is the fraction of annotated task-useful phrases preserved; higher is better.",
+            "Retention is the fraction of annotated private values still visible; lower is better. Utility retention is the fraction of annotated task-useful phrases preserved; higher is better. Unique sensitive releases is the fraction of released contexts that show a sensitive value in a record no other record matches on its visible quasi-identifiers (k=1); lower is better.",
             "",
             "This deterministic synthetic benchmark is suitable for lab comparison and regression testing, not as a formal privacy guarantee.",
         ]

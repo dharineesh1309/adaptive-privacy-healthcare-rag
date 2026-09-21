@@ -15,7 +15,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from adaptive_privacy.benchmark import generate_heldout_benchmark
 from adaptive_privacy.config import load_config
-from adaptive_privacy.evaluation import evaluate_ground_truth, render_markdown_report
+from adaptive_privacy.evaluation import (
+    evaluate_ground_truth,
+    reidentification_ablation,
+    render_markdown_report,
+)
 from adaptive_privacy.io import save_json
 from adaptive_privacy.pipeline import AdaptivePrivacyPipeline
 from adaptive_privacy.tier_builder import TierBuilder
@@ -37,8 +41,12 @@ def main() -> None:
 
     documents, queries = generate_heldout_benchmark()
     tiered_documents = TierBuilder().build_many(documents)
-    pipeline = AdaptivePrivacyPipeline(tiered_documents, config=load_config(args.config))
-    rows, summary = evaluate_ground_truth(documents, queries, pipeline)
+    config = load_config(args.config)
+    pipeline = AdaptivePrivacyPipeline(tiered_documents, config=config)
+    rows, summary = evaluate_ground_truth(
+        documents, queries, pipeline,
+        ablations=reidentification_ablation(tiered_documents, config),
+    )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     save_json(args.output_dir / "documents.json", documents)

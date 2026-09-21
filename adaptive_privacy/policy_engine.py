@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from .models import PolicyDecision, QueryRiskDecision, RiskLevel
+from .models import DocumentVariants, PolicyDecision, QueryRiskDecision, RiskLevel
+from .reidentification import ReidentificationRisk
 
 
 class PolicyEngine:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, documents: list[DocumentVariants] | None = None):
         self.risk_config = config["risk"]
+        self.k_min = int(config.get("reidentification", {}).get("k_min", 1))
+        self.reidentification = ReidentificationRisk(documents) if documents else None
 
     def decide(
         self,
@@ -46,6 +49,24 @@ class PolicyEngine:
                 selected = minimum
                 reasons.append(f"Session policy raised minimum tier to {minimum.value}")
 
+        k_value = None
+        if self.reidentification is not None:
+            reid = self.reidentification
+            tiers = list(RiskLevel)
+            while (
+                forced_level is None
+                and reid.exposes_sensitive(document_id, selected)
+                and (reid.k(document_id, selected) or 0) < self.k_min
+            ):
+                raised = tiers[tiers.index(selected) + 1]
+                reasons.append(
+                    f"Re-identification check: k={reid.k(document_id, selected)} < "
+                    f"{self.k_min} at {selected.value}; raised to {raised.value}"
+                )
+                selected = raised
+            if reid.exposes_sensitive(document_id, selected):
+                k_value = reid.k(document_id, selected)
+
         return PolicyDecision(
             document_id=str(document_id),
             final_score=final_score,
@@ -54,6 +75,7 @@ class PolicyEngine:
             document_score=document_score,
             role_score=query_decision.role_score,
             reasons=reasons,
+            k_anonymity=k_value,
         )
 
     def _level_for_score(self, score: float) -> RiskLevel:
