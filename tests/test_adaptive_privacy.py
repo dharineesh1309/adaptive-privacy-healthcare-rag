@@ -613,6 +613,30 @@ class PipelineTests(unittest.TestCase):
         )
 
 
+class ReidentificationTests(unittest.TestCase):
+    def test_unique_sensitive_release_is_raised_but_fixed_modes_are_not(self):
+        documents = TierBuilder().build_many(
+            [
+                {"id": "A", "text": "Patient Asha Rao, age 47, lives in Mysuru. She was diagnosed with diabetes on 12 March 2024."},
+                {"id": "B", "text": "Patient Ravi Kumar, age 46, lives in Pune. He was diagnosed with asthma on 2 May 2024."},
+                {"id": "C", "text": "Patient Meena Das, age 31, lives in Pune. She was diagnosed with migraine on 2 May 2021."},
+            ]
+        )
+        config = load_config()
+        engine = PolicyEngine(config, documents)
+        query = QueryRiskClassifier(config).classify("What is diabetes?", "doctor")
+        shared = engine.decide("A", 0.5, query, minimum_level="medium")
+        self.assertEqual(RiskLevel.MEDIUM, shared.selected_tier)
+        self.assertEqual(2, shared.k_anonymity)
+        unique = engine.decide("C", 0.5, query, minimum_level="medium")
+        self.assertEqual(RiskLevel.HIGH, unique.selected_tier)
+        self.assertIsNone(unique.k_anonymity)
+        self.assertIn("Re-identification check", unique.reasons[-1])
+        control = engine.decide("C", 0.5, query, forced_level="low")
+        self.assertEqual(RiskLevel.LOW, control.selected_tier)
+        self.assertEqual(1, control.k_anonymity)
+
+
 class InferenceAttackTests(unittest.TestCase):
     def test_diagnosis_match_is_conservative(self):
         self.assertTrue(diagnosis_recovered("chronic migraine", "Migraines"))
