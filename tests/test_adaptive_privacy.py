@@ -369,8 +369,10 @@ class PipelineTests(unittest.TestCase):
         doctor_result = self.pipeline.process(
             query, role="doctor", role_verified=True, top_k=1
         )
+        # DOC-1 is the only patient record (k=1), so public access hides its diagnosis;
+        # verified clinicians are exempt from the re-identification check.
         self.assertEqual(
-            RiskLevel.MEDIUM, public_result.policy_decisions[0].selected_tier
+            RiskLevel.HIGH, public_result.policy_decisions[0].selected_tier
         )
         self.assertEqual(RiskLevel.LOW, doctor_result.policy_decisions[0].selected_tier)
 
@@ -384,7 +386,7 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(result.role_assurance["downgraded"])
         self.assertEqual("public", result.role_assurance["effective_role"])
         self.assertEqual(
-            RiskLevel.MEDIUM, result.policy_decisions[0].selected_tier
+            RiskLevel.HIGH, result.policy_decisions[0].selected_tier
         )
 
     def test_query_prompt_injection_forces_high_tier(self):
@@ -624,7 +626,7 @@ class ReidentificationTests(unittest.TestCase):
         )
         config = load_config()
         engine = PolicyEngine(config, documents)
-        query = QueryRiskClassifier(config).classify("What is diabetes?", "doctor")
+        query = QueryRiskClassifier(config).classify("What is diabetes?", "public")
         shared = engine.decide("A", 0.5, query, minimum_level="medium")
         self.assertEqual(RiskLevel.MEDIUM, shared.selected_tier)
         self.assertEqual(2, shared.k_anonymity)
@@ -635,6 +637,9 @@ class ReidentificationTests(unittest.TestCase):
         control = engine.decide("C", 0.5, query, forced_level="low")
         self.assertEqual(RiskLevel.LOW, control.selected_tier)
         self.assertEqual(1, control.k_anonymity)
+        clinician = QueryRiskClassifier(config).classify("What is diabetes?", "doctor")
+        exempt = engine.decide("C", 0.5, clinician, minimum_level="medium")
+        self.assertEqual(RiskLevel.MEDIUM, exempt.selected_tier)
 
 
 class InferenceAttackTests(unittest.TestCase):

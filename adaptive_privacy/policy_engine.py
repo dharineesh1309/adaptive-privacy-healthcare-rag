@@ -9,7 +9,10 @@ from .reidentification import ReidentificationRisk
 class PolicyEngine:
     def __init__(self, config: dict, documents: list[DocumentVariants] | None = None):
         self.risk_config = config["risk"]
-        self.k_min = int(config.get("reidentification", {}).get("k_min", 1))
+        reid_config = config.get("reidentification", {})
+        self.k_min = int(reid_config.get("k_min", 1))
+        # Effective roles are already verified upstream; unverified claims arrive as public.
+        self.exempt_roles = {str(role).lower() for role in reid_config.get("exempt_roles", [])}
         self.reidentification = ReidentificationRisk(documents) if documents else None
 
     def decide(
@@ -55,6 +58,7 @@ class PolicyEngine:
             tiers = list(RiskLevel)
             while (
                 forced_level is None
+                and query_decision.role not in self.exempt_roles
                 and reid.exposes_sensitive(document_id, selected)
                 and (reid.k(document_id, selected) or 0) < self.k_min
             ):

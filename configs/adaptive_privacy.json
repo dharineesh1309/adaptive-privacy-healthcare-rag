@@ -95,7 +95,8 @@
     "top_k": 2
   },
   "reidentification": {
-    "k_min": 2
+    "k_min": 2,
+    "exempt_roles": ["doctor", "admin"]
   },
   "generation": {
     "enabled": true,
