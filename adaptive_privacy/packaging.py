@@ -53,6 +53,9 @@ RESULT_FILES = {
     "results/adaptive_privacy/ledger/summary.json": "experiment_results/ledger_summary.json",
     "results/adaptive_privacy/ledger/evaluation.csv": "experiment_results/ledger_evaluation.csv",
     "results/adaptive_privacy/ledger/report.md": "experiment_results/LEDGER_REPORT.md",
+    "results/adaptive_privacy/inference_attack/summary.json": "experiment_results/inference_attack_summary.json",
+    "results/adaptive_privacy/inference_attack/evaluation.csv": "experiment_results/inference_attack_evaluation.csv",
+    "results/adaptive_privacy/inference_attack/report.md": "experiment_results/INFERENCE_ATTACK_REPORT.md",
 }
 
 

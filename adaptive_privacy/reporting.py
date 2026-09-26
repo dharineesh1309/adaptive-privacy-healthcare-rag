@@ -54,6 +54,7 @@ def generate_final_report(
     challenge_summary: dict[str, Any] | None = None,
     external_injection_summary: dict[str, Any] | None = None,
     ledger_summary: dict[str, Any] | None = None,
+    inference_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -66,7 +67,7 @@ def generate_final_report(
         "",
         "## Abstract",
         "",
-        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, verified-role gating, purpose-bound disclosure rules, retrieved-context prompt-injection neutralization, cumulative session risk, and a persistent pseudonymous privacy ledger. Query risk, document sensitivity, role assurance, declared purpose, and prior cross-session exposure determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare adaptive masking with always-low and always-high policies, while adversarial conversations and ablations test the defense-in-depth layer.",
+        "This lab project extends a fixed offline privacy-preserving RAG pipeline with three irreversible document representations, verified-role gating, purpose-bound disclosure rules, retrieved-context prompt-injection neutralization, cumulative session risk, and a persistent pseudonymous privacy ledger. Query risk, document sensitivity, role assurance, declared purpose, and prior cross-session exposure determine whether low, medium, or high protection is served or the request is blocked. The online path never reloads the raw document. Controlled and ChatDoctor-based experiments compare adaptive masking with always-low and always-high policies, while adversarial conversations and ablations test the defense-in-depth layer. A release-time k-anonymity check raises the tier when a sensitive value would appear in a record that is unique on its visible quasi-identifiers, and an attacker-LLM experiment measures whether masked diagnoses can still be inferred, including from the base paper's own multi-agent rewrite.",
         "",
         "## Research question",
         "",
@@ -128,6 +129,14 @@ def generate_final_report(
         f"On the ChatDoctor-based experiment, adaptive high-risk queries retained 0% of annotated direct, quasi, and sensitive values. Across all query levels, adaptive masking preserved {percent(chat_adaptive['utility_retention'])} utility versus {percent(chat_high['utility_retention'])} for always-high masking. This supports the intended privacy-utility trade-off within the controlled experimental setup.",
         "",
     ]
+    chat_no_reid = chatdoctor_summary["modes"].get("adaptive_no_reid_check")
+    if chat_no_reid is not None:
+        lines.extend(
+            [
+                f"Release-time re-identification check: without it, {percent(chat_no_reid['unique_sensitive_release_rate'])} of adaptive ChatDoctor releases showed a sensitive value in a record unique on its visible quasi-identifiers (age range and year are enough to single out a record). With the k>=2 check this fell to {percent(chat_adaptive['unique_sensitive_release_rate'])}, while utility moved from {percent(chat_no_reid['utility_retention'])} to {percent(chat_adaptive['utility_retention'])}. Verified clinicians are exempt because identifying their patient is the purpose of their access.",
+                "",
+            ]
+        )
     if session_summary is not None:
         session_metrics = session_summary["metrics"]
         session_benchmark = session_summary["benchmark"]
@@ -251,6 +260,29 @@ def generate_final_report(
                 "",
             ]
         )
+    if inference_summary is not None:
+        benchmark = inference_summary["benchmark"]
+        lines.extend(
+            [
+                "## Experiment 7: attacker-LLM diagnosis inference",
+                "",
+                f"Literal-retention metrics only check whether an annotated string survives masking. Here an LLM adversary reads each released representation of {benchmark['records']} medical records ({', '.join(benchmark['datasets'])}) and guesses the hidden diagnosis from remaining clues. The base paper's three-agent rewrite was produced through the same provider for {benchmark.get('paper_rewrites', 0)} records; `paper_rewrite_guarded` is that rewrite after the deterministic high-tier scan, as `run_pipeline.py` uses it.",
+                "",
+                "| Representation | Diagnosis string visible | Attacker recovered diagnosis |",
+                "|---|---:|---:|",
+            ]
+        )
+        for version, item in inference_summary["versions"].items():
+            lines.append(
+                f"| {version} | {percent(item['literal_visible_rate'])} | {percent(item['recovery_rate'])} |"
+            )
+        lines.extend(
+            [
+                "",
+                f"Without any record the attacker guessed `{inference_summary['prior']['guess']}`, matching {percent(inference_summary['prior']['recovery_rate'])} of records by chance. The gap between the two columns is inferential leakage through medications, symptoms, and therapies, which literal retention does not measure. Scoring is a conservative lexical match, so recovery rates are lower bounds.",
+                "",
+            ]
+        )
     lines.extend(
         [
         "## Reproduction",
@@ -262,6 +294,9 @@ def generate_final_report(
         "python scripts\\evaluate_frozen_challenge.py",
         "python scripts\\evaluate_external_injection.py",
         "python scripts\\evaluate_privacy_ledger.py",
+        "# Needs GROQ_API_KEY; answers are cached under results\\adaptive_privacy",
+        "python scripts\\run_paper_agents.py",
+        "python scripts\\evaluate_inference_attack.py",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -282,6 +317,8 @@ def generate_final_report(
         "- The persistent ledger is application-level disclosure accounting, not differential privacy, and principal IDs require trustworthy identity binding in production.",
         "- The ledger-reset endpoint is a lab control; it must be removed or restricted to authorized administrators in production.",
         "- Fixed-low/fixed-high modes and the synthetic comparison endpoint are evaluation controls and must not be exposed as user-selectable production policy overrides.",
+        "- k-anonymity is computed over the loaded corpus with detector-found quasi-identifiers; in small corpora most records are unique, so the check escalates often.",
+        "- The inference attack uses one attacker model and lexical scoring on 22 records; a stronger attacker or semantic judging would find more leakage, not less.",
         "",
         "## Conclusion",
         "",

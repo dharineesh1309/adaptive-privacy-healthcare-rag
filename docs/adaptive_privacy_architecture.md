@@ -64,6 +64,10 @@ path.
 
 11. Select the low, medium, or high stored variant. Extraction-attack patterns
    always force high.
+   Release-time re-identification check: if the selected variant shows a
+   sensitive attribute and fewer than `k_min` corpus records share its visible
+   quasi-identifiers (for example age range and year), raise the tier. Verified
+   clinicians and administrators are exempt; fixed evaluation modes are not raised.
 12. Run a residual privacy scan before generation.
 13. Run another privacy scan over the generated answer.
 14. On an allowed response, record value-free exposure categories in the ledger
@@ -100,8 +104,11 @@ The experiment compares fixed-low, fixed-high, and adaptive policies using:
 - external scenario-isolated injection recall and false-positive rate;
 - train/validation/test generalization of a learned character TF-IDF baseline;
 - cross-session reset-attack blocking with a session-only ablation;
-- duplicate-disclosure charging, purpose denial, and principal isolation; and
-- absence of raw values from the saved pseudonymous ledger.
+- duplicate-disclosure charging, purpose denial, and principal isolation;
+- absence of raw values from the saved pseudonymous ledger;
+- unique sensitive releases (k=1) with and without the re-identification check; and
+- attacker-LLM diagnosis inference from each released representation, including
+  the base paper's multi-agent rewrite.
 
 The bundled synthetic benchmark is intended for functionality and regression
 testing. Independent NER, human review, and a larger held-out dataset are required

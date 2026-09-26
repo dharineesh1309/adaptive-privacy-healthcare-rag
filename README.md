@@ -217,6 +217,28 @@ identity layer; unverified privileged claims are evaluated as public. This flag 
 for a lab demonstration only and must not be sourced directly from a user in a
 real deployment.
 
+Run the base paper's three agents and the attacker-LLM inference test (both use
+Groq through `GROQ_API_KEY`; `configs/agents_config.yaml` now defaults to Groq API
+mode, set `mode: "vllm"` for local GPU inference):
+
+```bash
+pip install openai pyyaml tqdm
+python scripts/run_paper_agents.py
+python scripts/evaluate_inference_attack.py
+```
+
+The agents rewrite 22 medical records (12 held-out, 10 ChatDoctor with a specific
+diagnosis). The attacker then guesses each record's hidden diagnosis from the
+low tier, the high tier, and the paper's rewrite, next to a no-record prior.
+Literal retention says whether the diagnosis string survived; the attacker shows
+whether medications and symptoms still give it away. Both scripts cache results,
+so reruns and interrupted runs cost no extra calls.
+
+Before release, the policy engine also checks k-anonymity: if the chosen tier
+shows a sensitive value and fewer than `reidentification.k_min` records share its
+visible quasi-identifiers, the tier is raised. Verified clinicians are exempt.
+The held-out and ChatDoctor reports include `adaptive_no_reid_check` as an ablation.
+
 Run the extension tests without installing third-party packages:
 
 ```bash

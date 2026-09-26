@@ -113,6 +113,7 @@ def main() -> None:
             f"Missing evaluation summaries: {paths}. Run both evaluation scripts first."
         )
 
+    inference_path = PROJECT_ROOT / "results" / "adaptive_privacy" / "inference_attack" / "summary.json"
     report = generate_final_report(
         load_json(args.controlled_summary),
         load_json(args.chatdoctor_summary),
@@ -120,6 +121,8 @@ def main() -> None:
         load_json(args.challenge_summary),
         load_json(args.external_injection_summary),
         load_json(args.ledger_summary),
+        # Optional: needs a Groq key, so the report builds without it.
+        load_json(inference_path) if inference_path.exists() else None,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report, encoding="utf-8")
