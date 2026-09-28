@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from .inference_attack import INFERENCE_NOTES, inference_table
+
 
 def percent(value: float) -> str:
     return f"{100.0 * value:.2f}%"
@@ -268,21 +270,21 @@ def generate_final_report(
                 "",
                 f"Literal-retention metrics only check whether an annotated string survives masking. Here an LLM adversary reads each released representation of {benchmark['records']} medical records ({', '.join(benchmark['datasets'])}) and guesses the hidden diagnosis from remaining clues. The base paper's three-agent rewrite was produced through the same provider for {benchmark.get('paper_rewrites', 0)} records; `paper_rewrite_guarded` is that rewrite after the deterministic high-tier scan, as `run_pipeline.py` uses it.",
                 "",
-                "| Representation | Diagnosis string visible | Attacker recovered diagnosis |",
-                "|---|---:|---:|",
+                *inference_table(inference_summary),
+                "",
+                f"Without any record the attacker guessed `{inference_summary['prior']['guess']}`, matching {percent(inference_summary['prior']['recovery_rate'])} of records by chance. Recovery above the visible-string rate is inferential leakage through medications, symptoms, and therapies, which literal retention does not measure. {INFERENCE_NOTES}",
+                "",
             ]
         )
-        for version, item in inference_summary["versions"].items():
-            lines.append(
-                f"| {version} | {percent(item['literal_visible_rate'])} | {percent(item['recovery_rate'])} |"
+        high = inference_summary["versions"].get("fixed_high")
+        low = inference_summary["versions"].get("fixed_low")
+        if high and low:
+            lines.extend(
+                [
+                    f"The deterministic high tier hides the diagnosis string in {percent(1 - high['literal_visible_rate'])} of records, yet the attacker still recovered it in {percent(high['recovery_rate'])} against a {percent(low['recovery_rate'])} ceiling. Masking named values is therefore not sufficient for sensitive attributes whose treatment implies them; the clue terms the attacker cites (saved in the evaluation CSV) are the natural next masking target.",
+                    "",
+                ]
             )
-        lines.extend(
-            [
-                "",
-                f"Without any record the attacker guessed `{inference_summary['prior']['guess']}`, matching {percent(inference_summary['prior']['recovery_rate'])} of records by chance. The gap between the two columns is inferential leakage through medications, symptoms, and therapies, which literal retention does not measure. Scoring is a conservative lexical match, so recovery rates are lower bounds.",
-                "",
-            ]
-        )
     lines.extend(
         [
         "## Reproduction",
@@ -322,7 +324,7 @@ def generate_final_report(
         "",
         "## Conclusion",
         "",
-        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, purpose-, session-, cross-session-, and prompt-injection-aware. The reset-attack ablation isolates why persistent disclosure accounting matters, while the external injection result keeps the security claim appropriately narrow. It is suitable as a lab prototype and provides a reproducible foundation for authenticated identity, independently validated purpose rules, stronger detectors, and generative-model red teaming.",
+        "The extension demonstrates that a small, auditable defense-in-depth layer can make the supplied fixed sanitization pipeline query-, role-, purpose-, session-, cross-session-, and prompt-injection-aware. The reset-attack ablation isolates why persistent disclosure accounting matters, while the external injection result keeps the security claim appropriately narrow. It is suitable as a lab prototype and provides a reproducible foundation for authenticated identity, independently validated purpose rules, stronger detectors, and generative-model red teaming. Two results argue against judging privacy by literal masking alone: generalized quasi-identifiers still left many records unique, which the release-time k-anonymity check now catches, and an attacker LLM inferred masked diagnoses from the treatments left in the text. The base paper's rewrite keeps common diagnoses by design (its prompt preserves common medical facts), so it does not close that gap either; masking the clue terms the attacker cites is the most important next step.",
         "",
         ]
     )

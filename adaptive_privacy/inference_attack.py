@@ -243,6 +243,33 @@ def evaluate_inference_attack(
     return rows, summary
 
 
+def inference_table(summary: dict[str, Any]) -> list[str]:
+    datasets = summary["benchmark"]["datasets"]
+    lines = [
+        "| Representation | Diagnosis string visible | Attacker recovered (all) | "
+        + " | ".join(f"Recovered ({name})" for name in datasets) + " |",
+        "|---|---:|---:|" + "---:|" * len(datasets),
+    ]
+    for version, item in summary["versions"].items():
+        by_dataset = " | ".join(
+            f"{item['recovery_by_dataset'].get(name, 0.0) * 100:.2f}%" for name in datasets
+        )
+        lines.append(
+            f"| {version} | {item['literal_visible_rate'] * 100:.2f}% | "
+            f"{item['recovery_rate'] * 100:.2f}% | {by_dataset} |"
+        )
+    return lines
+
+
+INFERENCE_NOTES = (
+    "`fixed_low` shows every diagnosis, so its recovery rate is the ceiling this scorer "
+    "can detect. Scoring is a conservative lexical match (GERD does not match "
+    "gastroesophageal reflux), and ChatDoctor labels come from a keyword heuristic that "
+    "is sometimes wrong, so held-out records give the cleaner estimate and all recovery "
+    "rates are lower bounds on inferential leakage."
+)
+
+
 def render_inference_report(summary: dict[str, Any]) -> str:
     lines = [
         "# Attacker-LLM Diagnosis Inference",
@@ -251,23 +278,12 @@ def render_inference_report(summary: dict[str, Any]) -> str:
         f"({', '.join(summary['benchmark']['datasets'])}). An LLM adversary reads each "
         "released representation and guesses the hidden diagnosis.",
         "",
-        "| Representation | Diagnosis string visible | Attacker recovered diagnosis |",
-        "|---|---:|---:|",
+        *inference_table(summary),
+        "",
+        f"No-record prior: the attacker guessed `{summary['prior']['guess']}`, which matches "
+        f"{summary['prior']['recovery_rate'] * 100:.2f}% of records by chance.",
+        "",
+        INFERENCE_NOTES,
+        "",
     ]
-    for version, item in summary["versions"].items():
-        lines.append(
-            f"| {version} | {item['literal_visible_rate'] * 100:.2f}% | "
-            f"{item['recovery_rate'] * 100:.2f}% |"
-        )
-    lines.extend(
-        [
-            "",
-            f"No-record prior: the attacker guessed `{summary['prior']['guess']}`, which matches "
-            f"{summary['prior']['recovery_rate'] * 100:.2f}% of records by chance.",
-            "",
-            "Scoring is a conservative lexical match, so synonyms count as misses and the "
-            "recovery rates are lower bounds on inferential leakage.",
-            "",
-        ]
-    )
     return "\n".join(lines)
