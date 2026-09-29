@@ -56,7 +56,7 @@ STRUCTURAL_TERMS = {
         "ಸೂಚನೆ", "ನಿಯಮ", "ನೀತಿ", "ಸುರಕ್ಷತಾ",
     ),
     "exfiltration_action": (
-        "show", "print", "reproduce", "return", "dump", "reveal", "expose", "provide", "open",
+        "show", "print", "reproduce", "repeat", "recite", "return", "dump", "reveal", "expose", "provide", "open",
         "दिखा", "छाप", "लौटा", "प्रकट", "दे दें", "दें", "खोल",
         "ತೋರಿಸಿ", "ಮುದ್ರಿಸಿ", "ಹಿಂತಿರುಗಿಸಿ", "ಬಹಿರಂಗಪಡಿಸಿ", "ನೀಡಿ",
     ),
