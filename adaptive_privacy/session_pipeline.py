@@ -117,6 +117,14 @@ class SessionAwarePrivacyPipeline:
             key=lambda level: LEVEL_ORDER[level],
         )
         blocked_by = []
+        # A detected "repeat/print the context" request is refused, not served masked:
+        # even the high tier keeps the record's narrative verbatim.
+        if self.pipeline.config.get("integrity", {}).get(
+            "block_context_exfiltration", True
+        ) and "context_exfiltration" in (
+            self.pipeline.classifier.injection_guard.assess(query).categories
+        ):
+            blocked_by.append("context exfiltration guard")
         if not purpose_decision.allowed:
             blocked_by.append("purpose policy")
         if session_decision.action == "block":

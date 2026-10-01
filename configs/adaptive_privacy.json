@@ -94,6 +94,9 @@
   "retrieval": {
     "top_k": 2
   },
+  "integrity": {
+    "block_context_exfiltration": true
+  },
   "reidentification": {
     "k_min": 2,
     "exempt_roles": ["doctor", "admin"]
