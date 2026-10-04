@@ -115,6 +115,7 @@ class GroqInferenceAttacker:
         self.model = str(settings.get("model", "openai/gpt-oss-20b"))
         self.base_url = str(settings.get("base_url", "https://api.groq.com/openai/v1"))
         self.api_key_env = str(settings.get("api_key_env", "GROQ_API_KEY"))
+        self.reasoning_effort = settings.get("reasoning_effort")
         self.transport = transport
         self.sleep = sleep
         self.budget = DailyUsageBudget(
@@ -146,8 +147,9 @@ class GroqInferenceAttacker:
             "temperature": 0,
             "max_tokens": 800,
             "response_format": {"type": "json_object"},
-            "reasoning_effort": "low",
         }
+        if self.reasoning_effort:  # gpt-oss only; local Ollama models reject it
+            payload["reasoning_effort"] = self.reasoning_effort
         for _ in range(10):
             allowed, reason = self.budget.reserve(len(prompt) // 4 + 800)
             if not allowed:

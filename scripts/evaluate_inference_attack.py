@@ -36,6 +36,7 @@ def main() -> None:
     results = PROJECT_ROOT / "results" / "adaptive_privacy"
     parser.add_argument("--rewrites", type=Path, default=results / "paper_agents" / "rewrites.json")
     parser.add_argument("--output-dir", type=Path, default=results / "inference_attack")
+    parser.add_argument("--config", type=Path, default=None, help="adaptive_privacy JSON config")
     args = parser.parse_args()
 
     rewrites = load_json(args.rewrites) if args.rewrites.exists() else {}
@@ -51,7 +52,7 @@ def main() -> None:
         cases.append({**case, "versions": versions})
     print(f"{len(cases)} records, {len(rewrites)} with paper rewrites")
 
-    attacker = GroqInferenceAttacker(load_config(), args.output_dir / "attack_cache.json")
+    attacker = GroqInferenceAttacker(load_config(args.config), args.output_dir / "attack_cache.json")
     rows, summary = evaluate_inference_attack(cases, attacker)
     summary["benchmark"]["paper_rewrites"] = len(rewrites)
     print(f"{attacker.calls} provider call(s) made")

@@ -16,8 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from adaptive_privacy.inference_attack import load_attack_cases
-from adaptive_privacy.io import load_json, save_json
-from agents.system import PPRSystem
+from agents.system import PPRSystem, rewrite_cached
 
 
 def main() -> None:
@@ -31,23 +30,14 @@ def main() -> None:
     parser.add_argument("--chunk", type=int, default=3)
     args = parser.parse_args()
 
-    cache = load_json(args.output) if args.output.exists() else {}
-    pending = [case for case in load_attack_cases() if case["document_id"] not in cache]
-    print(f"{len(cache)} cached, {len(pending)} pending")
-    system = PPRSystem(config_path=args.config)
-    for start in range(0, len(pending), args.chunk):
-        chunk = pending[start : start + args.chunk]
-        results = system.process_documents_batch([case["text"] for case in chunk])
-        for case, result in zip(chunk, results):
-            # The agents return "" on provider or parsing errors; retry those next run.
-            if result["rewritten_text"].strip():
-                cache[case["document_id"]] = {
-                    "rewritten_text": result["rewritten_text"],
-                    "detected_pii": result["detected_pii"],
-                }
-        save_json(args.output, cache)
-        print(f"{len(cache)} rewrites cached -> {args.output}")
-    missing = len(load_attack_cases()) - len(cache)
+    cases = load_attack_cases()
+    cache = rewrite_cached(
+        PPRSystem(config_path=args.config),
+        {case["document_id"]: case["text"] for case in cases},
+        str(args.output),
+        args.chunk,
+    )
+    missing = len(cases) - len(cache)
     if missing:
         print(f"{missing} record(s) failed; rerun this script to retry them.")
 

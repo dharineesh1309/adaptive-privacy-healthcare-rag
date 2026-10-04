@@ -153,6 +153,33 @@ class PPRSystem:
         return results
 
 
+def rewrite_cached(system: PPRSystem, texts_by_id: dict, cache_path: str, chunk: int = 3) -> dict:
+    """Rewrite documents not yet in the JSON cache; saves after each chunk so runs resume."""
+    import json
+
+    cache = {}
+    if os.path.exists(cache_path):
+        with open(cache_path, "r", encoding="utf-8") as f:
+            cache = json.load(f)
+    pending = [doc_id for doc_id in texts_by_id if doc_id not in cache]
+    print(f"{len(cache)} cached, {len(pending)} pending rewrites")
+    for start in range(0, len(pending), chunk):
+        ids = pending[start:start + chunk]
+        results = system.process_documents_batch([texts_by_id[doc_id] for doc_id in ids])
+        for doc_id, result in zip(ids, results):
+            # The agents return "" on provider or parsing errors; those retry next run.
+            if result["rewritten_text"].strip():
+                cache[doc_id] = {
+                    "rewritten_text": result["rewritten_text"],
+                    "detected_pii": result["detected_pii"],
+                }
+        os.makedirs(os.path.dirname(os.path.abspath(cache_path)), exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=2)
+        print(f"{len(cache)} rewrites cached -> {cache_path}")
+    return cache
+
+
 if __name__ == "__main__":
     import argparse
     import json

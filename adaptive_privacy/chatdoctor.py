@@ -143,9 +143,15 @@ def prepare_chatdoctor_benchmark(
     queries: list[dict[str, Any]] = []
 
     for index, row in enumerate(rows):
-        if index >= len(NAMES):
-            raise ValueError(f"At most {len(NAMES)} rows are supported by the profiles.")
-        name = NAMES[index]
+        if index >= len(NAMES) ** 2:
+            raise ValueError(f"At most {len(NAMES) ** 2} rows are supported by the profiles.")
+        # The first len(NAMES) rows keep the original pairs; later rows shift the surname.
+        shift, position = divmod(index, len(NAMES))
+        name = (
+            NAMES[position].split()[0]
+            + " "
+            + NAMES[(position + shift) % len(NAMES)].split()[1]
+        )
         age = 23 + ((index * 5) % 45)
         city = CITIES[index % len(CITIES)]
         address = f"{301 + index} {STREETS[index % len(STREETS)]}"
