@@ -18,6 +18,7 @@ SOURCE_DIRECTORIES = (
     "data_preparation",
     "docs",
     "examples",
+    "kaggle",
     "prompts",
     "retrieval",
     "scripts",

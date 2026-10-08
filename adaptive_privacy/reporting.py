@@ -6,6 +6,7 @@ from datetime import date
 from typing import Any
 
 from .inference_attack import INFERENCE_NOTES, inference_table
+from .paper_protocol import render_protocol_report
 
 
 def percent(value: float) -> str:
@@ -57,6 +58,7 @@ def generate_final_report(
     external_injection_summary: dict[str, Any] | None = None,
     ledger_summary: dict[str, Any] | None = None,
     inference_summary: dict[str, Any] | None = None,
+    protocol_summary: dict[str, Any] | None = None,
 ) -> str:
     controlled = controlled_summary["benchmark"]
     chatdoctor = chatdoctor_summary["benchmark"]
@@ -285,6 +287,13 @@ def generate_final_report(
                     "",
                 ]
             )
+    if protocol_summary is not None:
+        # Same tables as results/adaptive_privacy/paper_protocol/report.md, one heading level down.
+        body = render_protocol_report(protocol_summary).splitlines()[2:]
+        lines.extend(
+            ["## Experiment 8: head-to-head on the paper's protocol", ""]
+            + [line.replace("## ", "### ", 1) if line.startswith("## ") else line for line in body]
+        )
     lines.extend(
         [
         "## Reproduction",

@@ -239,6 +239,19 @@ shows a sensitive value and fewer than `reidentification.k_min` records share it
 visible quasi-identifiers, the tier is raised. Verified clinicians are exempt.
 The held-out and ChatDoctor reports include `adaptive_no_reid_check` as an ablation.
 
+Head-to-head on the paper's own protocol (Kaggle GPU): `kaggle/paper_protocol.ipynb`
+installs Ollama, serves `llama3.1:8b` (the paper reports LLaMA-3-8B), and runs
+`scripts/evaluate_paper_protocol.py`. Naive RAG, the paper's rewrite, our layer and
+the hybrid (paper rewrite as our high tier) share one model, corpus, top-3 retrieval
+and prompt. It reports the paper's metrics (Target Info, Repeat Prompt, ROUGE Prompt,
+BLEU-1, ROUGE-L, FC score) on the test half of its targeted/untargeted prompts, plus a
+stepwise one-attribute-per-turn attack (the paper's Table 4 weakness) and held-out
+utility questions. Unzip the notebook's `paper_protocol_results.zip` into
+`results/adaptive_privacy/paper_protocol/` and rerun `scripts/build_final_report.py`
+to add it as Experiment 8. Detected "repeat the context" requests are refused online
+(`integrity.block_context_exfiltration`); the `*_no_block` methods report the result
+without that refusal.
+
 Run the extension tests without installing third-party packages:
 
 ```bash

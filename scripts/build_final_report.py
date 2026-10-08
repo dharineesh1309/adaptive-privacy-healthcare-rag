@@ -114,6 +114,7 @@ def main() -> None:
         )
 
     inference_path = PROJECT_ROOT / "results" / "adaptive_privacy" / "inference_attack" / "summary.json"
+    protocol_path = PROJECT_ROOT / "results" / "adaptive_privacy" / "paper_protocol" / "summary.json"
     report = generate_final_report(
         load_json(args.controlled_summary),
         load_json(args.chatdoctor_summary),
@@ -123,6 +124,7 @@ def main() -> None:
         load_json(args.ledger_summary),
         # Optional: needs a Groq key, so the report builds without it.
         load_json(inference_path) if inference_path.exists() else None,
+        load_json(protocol_path) if protocol_path.exists() else None,  # from the Kaggle run
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(report, encoding="utf-8")
