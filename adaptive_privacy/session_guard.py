@@ -13,19 +13,23 @@ from typing import Any
 from .models import DocumentVariants, QueryRiskDecision, RiskLevel
 
 
+# Request-shaped phrases: patients write "my name is", "loss of balance" or "pay for
+# tests" without asking for anyone's identifier, so bare words are not used for these.
 REQUEST_PATTERNS = {
-    "phone": ("phone", "mobile", "contact number"),
-    "email": ("email",),
-    "address": ("address", "where does", "where is"),
+    "phone": ("phone number", "mobile number", "contact number", "phone no"),
+    "email": ("email address", "email id", "e-mail address"),
+    "address": ("home address", "address of", "their address", "his address", "her address",
+                "where does", "where do they live"),
     "account_number": ("account number", "a/c"),
-    "name": ("name", "who is"),
+    "name": ("name of the patient", "name of this patient", "patient's name", "patient name",
+             "full name", "their name", "his name", "her name", "who is the patient"),
     "age": ("age", "how old", "age group"),
     "location": ("city", "location", "where from", "region"),
     "date": ("date", "when was", "what year"),
-    "organization": ("company", "organization", "employer", "works at"),
+    "organization": ("which company", "what company", "organization", "employer", "works at"),
     "diagnosis": ("diagnosis", "condition", "disease"),
-    "salary": ("salary", "income", "pay"),
-    "balance": ("balance",),
+    "salary": ("salary", "income", "paycheck"),
+    "balance": ("account balance", "bank balance", "balance of", "balance in"),
     "treatment": ("treatment", "medication", "prescribed"),
 }
 
@@ -38,11 +42,12 @@ LEVEL_ORDER = {RiskLevel.LOW: 0, RiskLevel.MEDIUM: 1, RiskLevel.HIGH: 2}
 def infer_requested_types(query: str) -> set[str]:
     normalized_query = " ".join(query.lower().split())
     # Whole words only (optional plural): "age" must not match "average"/"manage".
+    # A first-person "my ..." is self-disclosure, not a request for someone's value.
     return {
         entity_type
         for entity_type, patterns in REQUEST_PATTERNS.items()
         if any(
-            re.search(rf"\b{re.escape(pattern)}s?\b", normalized_query)
+            re.search(rf"(?<!\bmy )\b{re.escape(pattern)}s?\b", normalized_query)
             for pattern in patterns
         )
     }
