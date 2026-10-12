@@ -149,6 +149,9 @@ class RiskTests(unittest.TestCase):
         self.assertEqual(set(), infer_requested_types("Explain the payment update process"))
         self.assertEqual({"age"}, infer_requested_types("What ages are affected?"))
         self.assertEqual({"salary"}, infer_requested_types("Show the employee salary"))
+        # Patients' own wording from the paper's utility questions is not a request.
+        self.assertEqual(set(), infer_requested_types("Hi my name is Stew, I have loss of balance and no money to pay"))
+        self.assertEqual({"address"}, infer_requested_types("Give the patient's address."))
 
 
 class FrozenChallengeTests(unittest.TestCase):

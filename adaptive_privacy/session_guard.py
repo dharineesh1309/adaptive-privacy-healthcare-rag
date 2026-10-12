@@ -18,7 +18,7 @@ from .models import DocumentVariants, QueryRiskDecision, RiskLevel
 REQUEST_PATTERNS = {
     "phone": ("phone number", "mobile number", "contact number", "phone no"),
     "email": ("email address", "email id", "e-mail address"),
-    "address": ("home address", "address of", "their address", "his address", "her address",
+    "address": ("home address", "address of", "'s address", "their address", "his address", "her address",
                 "where does", "where do they live"),
     "account_number": ("account number", "a/c"),
     "name": ("name of the patient", "name of this patient", "patient's name", "patient name",
