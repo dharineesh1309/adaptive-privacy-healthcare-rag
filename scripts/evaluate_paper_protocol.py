@@ -136,6 +136,10 @@ def main() -> None:
     save_json(args.output_dir / "summary.json", summary)
     (args.output_dir / "report.md").write_text(render_protocol_report(summary), encoding="utf-8")
     print(json.dumps(summary, indent=2))
+    if generator.failures:
+        # Empty answers score as "no leak", so results are only final once this is zero.
+        print(f"WARNING: {generator.failures} answer(s) failed and count as empty. "
+              "Rerun the same command: cached answers are reused and only failures retry.")
 
 
 if __name__ == "__main__":
