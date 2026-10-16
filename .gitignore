@@ -23,3 +23,6 @@ results/adaptive_privacy/
 
 # Generated submission packages
 dist/
+
+# Local demo logs
+results/*.log
