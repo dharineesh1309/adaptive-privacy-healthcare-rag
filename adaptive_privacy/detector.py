@@ -35,7 +35,7 @@ PATTERNS = (
     PatternSpec(
         "government_id",
         "direct",
-        r"\b(?:Aadhaar|SSN|Social Security(?: Number)?|PAN)\s*(?:number|no\.?|:|#)?\s*([A-Z0-9 -]{8,20})\b",
+        r"\b(?:Aadhaar|SSN|Social Security(?: Number)?|PAN)\b\s*(?:number|no\.?|:|#)?\s*((?=[A-Z -]*\d)[A-Z0-9 -]{8,20})\b",
         1.0,
         group=1,
     ),
@@ -56,10 +56,11 @@ PATTERNS = (
     PatternSpec(
         "name",
         "direct",
-        r"\b(?:Patient|Customer|Employee|Mr|Mrs|Ms|Dr)\.?\s+(?:(?:is|named)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b",
+        # Only the title is case-insensitive, so "patient has been ..." is not a name.
+        r"\b(?i:Patient|Customer|Employee|Mr|Mrs|Ms|Dr)\.?\s+(?:(?:is|named)\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\b",
         0.90,
         group=1,
-        flags=re.IGNORECASE,
+        flags=0,
     ),
     PatternSpec(
         "name",

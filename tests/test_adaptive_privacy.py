@@ -84,6 +84,11 @@ class DetectorTests(unittest.TestCase):
             <= values
         )
 
+    def test_plain_clinical_words_are_not_names_or_ids(self):
+        text = "The patient has been experiencing panic attacks since March."
+        types = {item.entity_type for item in PrivacyDetector().detect(text)}
+        self.assertFalse({"name", "government_id"} & types)
+
 
 class TierBuilderTests(unittest.TestCase):
     def test_tiers_are_progressively_more_private(self):
