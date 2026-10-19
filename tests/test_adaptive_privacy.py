@@ -596,6 +596,24 @@ class PipelineTests(unittest.TestCase):
             self.assertNotIn("John Smith", ledger_text)
             self.assertNotIn("diabetes", ledger_text.lower())
 
+    def test_first_over_budget_release_escalates_instead_of_blocking(self):
+        config = copy.deepcopy(load_config())
+        config["ledger"]["budgets"] = {"quasi_attributes": 3, "sensitive_attributes": 1, "documents": 4}
+        documents = TierBuilder().build_many(
+            [
+                {"document_id": "DOC-001", "text": SENSITIVE_TEXT},
+                {"document_id": "DOC-002", "text": "Patient Jane Doe was diagnosed with chronic migraine."},
+            ]
+        )
+        decision = PersistentPrivacyLedger(config).preview(
+            "fresh-patient",
+            {item.document_id: item for item in documents},
+            {item.document_id: RiskLevel.MEDIUM for item in documents},
+            {"diagnosis"},
+        )
+        self.assertEqual("escalate", decision.action)
+        self.assertEqual(RiskLevel.HIGH, decision.minimum_tier)
+
     def test_ledger_benchmark_distinguishes_persistence_from_session_only(self):
         documents = TierBuilder().build_many(
             [

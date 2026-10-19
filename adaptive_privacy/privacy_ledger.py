@@ -95,12 +95,16 @@ class PersistentPrivacyLedger:
                     reasons=reasons,
                 )
 
+            # Only a request for an already spent category is refused; a first
+            # over-budget release is escalated, since the higher tier exposes nothing new.
             exhausted_categories = set()
             if quasi_over:
-                exhausted_categories.update(QUASI_TYPES)
+                if not budgets["remaining_quasi"]:
+                    exhausted_categories.update(QUASI_TYPES)
                 reasons.append("Principal quasi-identifier budget would be exceeded")
             if sensitive_over:
-                exhausted_categories.update(SENSITIVE_TYPES)
+                if not budgets["remaining_sensitive"]:
+                    exhausted_categories.update(SENSITIVE_TYPES)
                 reasons.append("Principal sensitive-attribute budget would be exceeded")
             if documents_over:
                 reasons.append("Principal protected-document budget would be exceeded")
