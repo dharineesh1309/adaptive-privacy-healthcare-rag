@@ -57,6 +57,12 @@ RESULT_FILES = {
     "results/adaptive_privacy/inference_attack/summary.json": "experiment_results/inference_attack_summary.json",
     "results/adaptive_privacy/inference_attack/evaluation.csv": "experiment_results/inference_attack_evaluation.csv",
     "results/adaptive_privacy/inference_attack/report.md": "experiment_results/INFERENCE_ATTACK_REPORT.md",
+    "results/adaptive_privacy/paper_protocol/summary.json": "experiment_results/paper_protocol_summary.json",
+    "results/adaptive_privacy/paper_protocol/evaluation.csv": "experiment_results/paper_protocol_evaluation.csv",
+    "results/adaptive_privacy/paper_protocol/report.md": "experiment_results/PAPER_PROTOCOL_REPORT.md",
+    # The caches keep their run path, so a Kaggle rerun of the uploaded zip resumes.
+    "results/adaptive_privacy/paper_protocol/generation_cache.jsonl": "results/adaptive_privacy/paper_protocol/generation_cache.jsonl",
+    "results/adaptive_privacy/paper_protocol/rewrites.json": "results/adaptive_privacy/paper_protocol/rewrites.json",
 }
 
 
