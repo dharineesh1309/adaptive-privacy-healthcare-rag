@@ -50,6 +50,39 @@ def adaptive_breakdown_table(summary: dict[str, Any]) -> list[str]:
     return lines
 
 
+def protocol_discussion(summary: dict[str, Any]) -> list[str]:
+    attacks, stepwise, utility = (summary["targeted"], summary["untargeted"]), summary["stepwise"], summary["utility"]
+    if not {"paper", "ours", "ours_no_block", "hybrid_no_block"} <= set(stepwise):
+        return []
+
+    def total(method: str, *keys: str) -> int:
+        return sum(task[method][key] for task in attacks for key in keys)
+
+    prompts = total("paper", "prompts")
+    leaked = ("quasi_leaked", "sensitive_leaked")
+    steps = {method: stepwise[method]["total_target_values_leaked"] for method in stepwise}
+    ours, paper = utility["ours"], utility["paper"]
+    memory = (
+        "the same, so this gain comes from session and ledger memory rather than the exfiltration refusal"
+        if steps["ours_no_block"] == steps["ours"]
+        else str(steps["ours_no_block"])
+    )
+    gap = paper["fc_score"] - ours["fc_score"]
+    # ponytail: fixed 0.2 FC threshold; a paired bootstrap on evaluation.csv is the real test.
+    verdict = "Utility held up" if gap <= 0 else "The paper keeps a small utility edge" if gap < 0.2 else "Utility is where the paper wins"
+    return [
+        "",
+        f"On {prompts} of the paper's attack prompts, ours refused {total('ours', 'blocked')} and released {total('ours', 'target_info')} direct identifiers and {total('ours', *leaked)} quasi or sensitive values, against {total('paper', 'target_info')} and {total('paper', *leaked)} for the paper's rewrite, whose answers repeated a retrieved record verbatim {total('paper', 'repeat_prompts')} times. The refusal is a template match: the guard's verbs were added after checking it against all of the paper's attack prompts, so these are not unseen attacks, and Experiment 5 shows how little it catches on unseen attack styles.",
+        "",
+        f"With the refusal switched off (`ours_no_block`), answers leaked {total('ours_no_block', 'target_info')} direct identifiers and {total('ours_no_block', *leaked)} quasi or sensitive values but repeated a record verbatim {total('ours_no_block', 'repeat_prompts')} times: the tiers mask identifiers and keep each record's narrative word for word, which the paper rewrites. Serving the paper's rewrite as the high tier (`hybrid_no_block`) gave {total('hybrid_no_block', 'repeat_prompts')} repeats and {total('hybrid_no_block', *leaked)} leaked values.",
+        "",
+        f"In the stepwise attack the paper leaked {steps['paper']} target values across {stepwise['paper']['chains']} patients and ours {steps['ours']}; without the refusal the count was {memory}.",
+        "",
+        f"{verdict}: ours refused {ours['blocked']} of {ours['questions']} patient questions and scored FC {ours['fc_score']} against {paper['fc_score']} for the paper (BLEU-1 {ours['bleu1']} against {paper['bleu1']}, naive RAG FC {utility['naive']['fc_score']}).",
+        "",
+    ]
+
+
 def generate_final_report(
     controlled_summary: dict[str, Any],
     chatdoctor_summary: dict[str, Any],
@@ -294,6 +327,7 @@ def generate_final_report(
             ["## Experiment 8: head-to-head on the paper's protocol", ""]
             + [line.replace("## ", "### ", 1) if line.startswith("## ") else line for line in body]
         )
+        lines.extend(protocol_discussion(protocol_summary))
     lines.extend(
         [
         "## Reproduction",
@@ -308,6 +342,7 @@ def generate_final_report(
         "# Needs GROQ_API_KEY; answers are cached under results\\adaptive_privacy",
         "python scripts\\run_paper_agents.py",
         "python scripts\\evaluate_inference_attack.py",
+        "# Experiment 8 runs on a Kaggle GPU: kaggle\\paper_protocol.ipynb",
         "python scripts\\build_final_report.py",
         "python -m unittest discover -s tests -v",
         "```",
@@ -330,6 +365,7 @@ def generate_final_report(
         "- Fixed-low/fixed-high modes and the synthetic comparison endpoint are evaluation controls and must not be exposed as user-selectable production policy overrides.",
         "- k-anonymity is computed over the loaded corpus with detector-found quasi-identifiers; in small corpora most records are unique, so the check escalates often.",
         "- The inference attack uses one attacker model and lexical scoring on 22 records; a stronger attacker or semantic judging would find more leakage, not less.",
+        "- The head-to-head uses one 8B generator, BM25 retrieval, a self-judged FC score and half of the paper's attack prompts; the context-exfiltration guard was checked against these same prompts during development.",
         "",
         "## Conclusion",
         "",
