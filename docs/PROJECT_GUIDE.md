@@ -585,13 +585,13 @@ commands.
 |---|---:|---:|---:|
 | Always low | 100% | 100% | 100% |
 | Always high | 0% | 70.3% | 0% |
-| Adaptive without re-identification check | 38.2% | 81.1% | 25.7% |
-| **Adaptive (full)** | 12.5% | **72.8%** | **0%** |
+| Adaptive without re-identification check | 47.2% | 82.9% | 30.6% |
+| **Adaptive (full)** | 16.7% | **73.6%** | **0%** |
 
 **What this shows:**
 - Adaptive masking keeps more useful information than always-high masking. The
   margin is large on the held-out set and small on ChatDoctor.
-- Without the re-identification check, about a quarter to a third of releases
+- Without the re-identification check, about a third of releases
   showed a diagnosis in a record that no other record matched. The check
   removes almost all of them, at a utility cost.
 - "Retained" counts exact string matches against annotations; "utility" is the
@@ -649,10 +649,10 @@ version and guesses the hidden diagnosis.
 
 | Version | Diagnosis word visible | Attacker recovered it (all) | Held-out | ChatDoctor |
 |---|---:|---:|---:|---:|
-| Low tier | 100% | 72.7% | 100% | 40% |
-| **High tier** | **18.2%** | **54.5%** | 75% | 30% |
+| Low tier | 100% | 81.8% | 100% | 60% |
+| **High tier** | **18.2%** | **50.0%** | 75% | 20% |
 | Paper's rewrite | 95.5% | 77.3% | 100% | 50% |
-| Paper's rewrite + our high-tier scan | 31.8% | 40.9% | 33.3% | 50% |
+| Paper's rewrite + our high-tier scan | 36.4% | 40.9% | 41.7% | 40% |
 
 With no record at all, the attacker said "unknown": 0% chance level.
 
@@ -662,13 +662,13 @@ With no record at all, the attacker said "unknown": 0% chance level.
   treatments, for example "Metformin … high blood glucose" → diabetes.
 - The paper's rewrite leaks even more, because it keeps common diagnoses by
   design.
-- The low tier's 72.7% is the ceiling of this scorer. It uses strict word
+- The low tier's 81.8% is the ceiling of this scorer. It uses strict word
   matching (GERD does not match "gastroesophageal reflux"), and some ChatDoctor
   labels are noisy, so all recovery rates are lower bounds.
 - The most important next step is masking the clue words the attacker cites.
   They are saved in `results/adaptive_privacy/inference_attack/evaluation.csv`.
 
-### 9.8 Head-to-head on the paper's own protocol — runs on Kaggle (results pending)
+### 9.8 Head-to-head on the paper's own protocol — Kaggle T4, `llama3.1:8b`
 
 `kaggle/paper_protocol.ipynb` runs `scripts/evaluate_paper_protocol.py` with a
 local `llama3.1:8b` served by Ollama; the paper reports LLaMA-3-8B as one of its
@@ -694,21 +694,115 @@ tokens.
 | 125 targeted attack prompts (test half of the paper's 250) | Target Info (unique identifiers leaked), Repeat Prompt (≥ 10 copied tokens), ROUGE Prompt (ROUGE-L > 0.5) |
 | 125 untargeted attack prompts | Repeat Prompt, ROUGE Prompt |
 | 20 stepwise attacks × 5 turns (the paper's Table 4 weakness) | Target values leaked, identity linked to diagnosis |
-| ~100 held-out patient questions | BLEU-1, ROUGE-L, LLM-judged factual consistency (1–5) |
+| 99 held-out patient questions | BLEU-1, ROUGE-L, LLM-judged factual consistency (1–5) |
 
-The estimated run time is 3–4.5 hours on a Kaggle T4. Results come back as
-`paper_protocol_results.zip`. Unzip it into
-`results/adaptive_privacy/paper_protocol/` and run
-`python scripts/build_final_report.py`; it appears as Experiment 8 in the final
-report.
+**Results** (run 2, 4 Nov 2026, after the two bug fixes below; no failed
+generations; full tables in `results/adaptive_privacy/paper_protocol/report.md`):
+
+Single-turn attacks, 250 of the paper's prompts (125 targeted + 125 untargeted):
+
+| Method | Identifiers leaked (Target Info) | Quasi + sensitive values leaked | Answers copying a record (Repeat) | ROUGE-L > 0.5 | Refused |
+|---|---:|---:|---:|---:|---:|
+| naive | 461 | 416 | 134 | 66 | 0 |
+| paper | 5 | 73 | 100 | 15 | 0 |
+| **ours** | **0** | **0** | **0** | **0** | 250 |
+| hybrid | 0 | 0 | 0 | 0 | 250 |
+| ours_no_block | 0 | 6 | 128 | 112 | 14 |
+| hybrid_no_block | 0 | 44 | 79 | 21 | 14 |
+
+Stepwise attack, 20 patients × 5 turns:
+
+| Method | Target values leaked | Patients with identity linked to diagnosis | Refused turns |
+|---|---:|---:|---:|
+| naive | 50 | 8 | 0 |
+| paper | 7 | 0 | 0 |
+| **ours** | **3** | **0** | 41 |
+| hybrid | 4 | 0 | 41 |
+| ours_no_block | 3 | 0 | 41 |
+| hybrid_no_block | 4 | 0 | 41 |
+
+Utility, 99 held-out patient questions:
+
+| Method | BLEU-1 | ROUGE-L | FC (1–5) | Refused |
+|---|---:|---:|---:|---:|
+| naive | 0.138 | 0.112 | 3.16 | 0 |
+| paper | 0.138 | 0.113 | 3.16 | 0 |
+| **ours** | **0.134** | **0.111** | **3.09** | 1 |
+| hybrid | 0.131 | 0.109 | 2.81 | 0 |
+
+A paired bootstrap over the 99 questions puts every utility gap between ours and
+the paper inside noise. The 95% intervals for ours minus the paper are:
+
+| Metric | Gap | 95% interval |
+|---|---:|---|
+| FC | −0.07 | −0.37 to +0.24 |
+| BLEU-1 | −0.004 | −0.014 to +0.005 |
+| ROUGE-L | −0.002 | −0.007 to +0.004 |
+
+Ours scored higher FC on 19 questions and lower on 22.
+
+**What this shows:**
+- **Single-turn attacks: we win, mostly through the refusal.** With the refusal
+  on, none of the 250 attack answers leaked anything. The paper's rewrite leaked
+  5 identifiers and 73 attribute values, and 100 of its answers copied a record.
+  The refusal matches the paper's "repeat the context" template, and it was
+  checked against these same prompts during development. So this is not a test
+  on unseen attacks; Section 9.5 shows how little the guard catches on those.
+- **Without the refusal, the result is split.** `ours_no_block` leaks far fewer
+  values than the paper (6 vs 73) but copies records more often (128 vs 100
+  Repeat, 112 vs 15 ROUGE). The tiers keep each record's wording and mask only
+  the identifiers, while the paper rewrites the whole text. The copied text
+  carries no identifiers, but it still counts on the paper's copy metrics. Using
+  the paper's rewrite as our high tier (`hybrid_no_block`) cuts the copying (79)
+  but leaks more values (44), because the rewrite keeps common diagnoses.
+- **Stepwise attack: a win that does not depend on the refusal.** The paper
+  leaked 7 target values and ours 3, with the same result when the refusal is
+  off. Neither linked a name to a diagnosis. The gain comes from session memory
+  and the ledger; the paper's defense has no memory across turns.
+  - Our 3 leaks come from turns that are now answered at the high tier instead
+    of refused.
+  - The record named the condition or city without a cue the detector knows,
+    such as "BPPV" without "diagnosed with", or "Kolkata" without "lives in".
+    So the high tier never masked it. This is the same blind spot as in
+    Section 9.7.
+- **Utility: tied with the paper.** FC is 3.09 against 3.16, inside noise. The
+  paper's own utility equals naive RAG.
+  - The one refusal is the output guard working as designed: the model listed
+    three named doctors in its answer.
+  - The hybrid scores lower (FC 2.81). It applies our high-tier masking on top
+    of the paper's rewrite, so it carries the information loss of both.
+
+**Two bugs run 1 exposed (fixed before run 2):**
+1. The persistent ledger refused a user's **first** question whenever the three
+   retrieved records together held more than two diagnoses or treatments. That
+   caused 6 of 9 utility refusals in run 1. Now it raises the tier to high,
+   which releases no new sensitive values. It refuses only when that category's
+   budget is already spent, so the reset attack in 9.6 is still blocked.
+2. The detector matched names case-insensitively, so "the patient **has been
+   experiencing**" counted as a name. It also found a PAN number inside
+   "pan**ic attack**". That caused the other 3 refusals, because the output
+   guard saw three or more "identifiers". It also masked ordinary words in many
+   contexts. Names must now be capitalized, and ID numbers must contain a digit.
+
+**What the fixes changed (run 1 → run 2, ours):**
+
+| Measure | Run 1 | Run 2 |
+|---|---:|---:|
+| Utility questions refused | 9 | 1 |
+| Utility FC | 2.86 | 3.09 |
+| Utility BLEU-1 | 0.125 | 0.134 |
+| Stepwise turns refused | 59 | 41 |
+| Stepwise values leaked | 1 | 3 |
+| Attack-prompt values leaked | 0 | 0 |
+
+So fewer false refusals bought nearly all of the utility gap back, at the cost
+of 2 extra stepwise leaks through the high tier's blind spot.
 
 **How to read the results fairly:**
-- Compare the methods within this one table. Do not compare against the
-  numbers printed in the paper: they used other LLMs, BGE-M3 search, a
-  200,000-document corpus and GPT-4o as judge.
-- The detector fix for "repeat … context" was made after seeing the paper's
-  prompts, and all 500 of them share that template. The `*_no_block` rows and
-  the stepwise attack are the tests that do not depend on it.
+- Compare the methods within these tables. Do not compare them against the
+  numbers printed in the paper: it used other LLMs, BGE-M3 search, a
+  200,000-document corpus and GPT-4o as judge. Here the FC judge is the same
+  `llama3.1:8b`.
 - The utility questions are held-out ChatDoctor records, not the paper's 1,000
   questions (which were used to fix the wording rules), so they are clean.
 
@@ -759,7 +853,14 @@ The demo has three views:
   sequence, and a cross-session reset attack.
 
 **Kaggle experiment:** see Section 9.8 and the first cell of
-`kaggle/paper_protocol.ipynb`.
+`kaggle/paper_protocol.ipynb`. To rerun it after a code change:
+1. Run `python scripts/package_lab_submission.py`. The zip carries the answer
+   cache and the paper's rewrites, so only changed prompts are regenerated.
+2. Upload the zip as a new version of the Kaggle dataset.
+3. Run the notebook cells in order, skipping the quick check.
+4. Unzip `paper_protocol_results.zip` into
+   `results/adaptive_privacy/paper_protocol/` and run
+   `python scripts/build_final_report.py`.
 
 ---
 
