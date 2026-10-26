@@ -250,7 +250,11 @@ utility questions. Unzip the notebook's `paper_protocol_results.zip` into
 `results/adaptive_privacy/paper_protocol/` and rerun `scripts/build_final_report.py`
 to add it as Experiment 8. Detected "repeat the context" requests are refused online
 (`integrity.block_context_exfiltration`); the `*_no_block` methods report the result
-without that refusal.
+without that refusal. Our layer leaked 0 values on 250 attack prompts against 73 for
+the paper's rewrite, and 3 against 7 target values in the stepwise attack. Utility was
+statistically tied (FC 3.09 against 3.16; the bootstrap interval includes zero).
+Section 9.8 of [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) has the analysis and
+the two bugs the first run exposed.
 
 Run the extension tests without installing third-party packages:
 
