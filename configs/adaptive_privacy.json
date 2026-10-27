@@ -95,7 +95,8 @@
     "top_k": 2
   },
   "integrity": {
-    "block_context_exfiltration": true
+    "block_context_exfiltration": true,
+    "block_context_copy": true
   },
   "reidentification": {
     "k_min": 2,

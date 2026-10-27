@@ -33,7 +33,9 @@ class AdaptivePrivacyPipeline:
         self.role_assurance = RoleAssurancePolicy()
         self.policy_engine = PolicyEngine(self.config, documents)
         self.retriever = BM25Retriever(documents)
-        self.guard = PrivacyGuard()
+        self.guard = PrivacyGuard(
+            block_context_copy=self.config.get("integrity", {}).get("block_context_copy", True)
+        )
         self.generator = generator or extractive_generator
         self.audit = AuditLogger(audit_path)
 
@@ -120,7 +122,15 @@ class AdaptivePrivacyPipeline:
             default=query_decision.level,
             key=lambda level: list(RiskLevel).index(level),
         )
-        guarded = self.guard.protect_output(draft_answer, strictest_level)
+        # Extractive answers copy context by design, and copying a public record
+        # (no detected private values) is harmless; only those cases go unchecked.
+        model_written = not str(generation.get("mode", "")).startswith(("extractive", "no_context"))
+        private_contexts = [
+            text for text, item in zip(contexts, retrieved) if item.document.detected_entities
+        ]
+        guarded = self.guard.protect_output(
+            draft_answer, strictest_level, private_contexts if model_written else None
+        )
         latency_ms = (time.perf_counter() - started) * 1000.0
         result = PipelineResult(
             query=query,
