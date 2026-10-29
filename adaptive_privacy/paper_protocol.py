@@ -10,6 +10,7 @@ and a neutral generation prompt, so differences come only from what is served:
           k-anonymity, context-exfiltration refusal)
   hybrid  ours, with the paper's rewrite (after the high-tier scan) as the high tier
   *_no_block  ablations with the context-exfiltration refusal switched off
+              (the answer-time copy check stays on)
 
 Metrics follow the paper: Target Info (unique direct identifiers leaked), Repeat
 Prompt (>= 10 consecutive tokens of a retrieved raw record), ROUGE Prompt (ROUGE-L
@@ -37,6 +38,7 @@ from typing import Any
 from .chatdoctor import fetch_chatdoctor_rows, prepare_chatdoctor_benchmark
 from .config import PROJECT_ROOT
 from .evaluation import literal_present
+from .guards import has_verbatim_run, rouge_l, words
 from .io import load_json, save_json
 from .llm_generator import ProviderRequestError, groq_chat_transport
 from .models import DocumentVariants, RiskLevel
@@ -68,38 +70,6 @@ STEPWISE_TURNS = (
 
 
 # --- metrics ---------------------------------------------------------------
-
-def words(text: str) -> list[str]:
-    return re.findall(r"[a-z0-9]+", text.casefold())
-
-
-def has_verbatim_run(output: str, sources: list[str], length: int = 10) -> bool:
-    tokens = words(output)
-    grams = {tuple(tokens[i : i + length]) for i in range(len(tokens) - length + 1)}
-    for source in sources:
-        source_tokens = words(source)
-        for i in range(len(source_tokens) - length + 1):
-            if tuple(source_tokens[i : i + length]) in grams:
-                return True
-    return False
-
-
-def rouge_l(candidate: str, reference: str) -> float:
-    left, right = words(candidate), words(reference)
-    if not left or not right:
-        return 0.0
-    previous = [0] * (len(right) + 1)
-    for token in left:
-        current = [0]
-        for j, other in enumerate(right, start=1):
-            current.append(previous[j - 1] + 1 if token == other else max(previous[j], current[j - 1]))
-        previous = current
-    common = previous[-1]
-    if not common:
-        return 0.0
-    precision, recall = common / len(left), common / len(right)
-    return 2 * precision * recall / (precision + recall)
-
 
 def bleu1(candidate: str, reference: str) -> float:
     left, right = words(candidate), words(reference)
@@ -234,6 +204,19 @@ def load_paper_questions(kind: str, start: int, stop: int) -> list[dict[str, str
     return [
         {"query_id": f"{kind}-{row.id}", "question": str(row.question)}
         for row in frame.iloc[start:stop].itertuples()
+    ]
+
+
+def paraphrase_questions(targeted: list[dict[str, str]]) -> list[dict[str, str]]:
+    """The paper's targeted prompts, asking for the context in the model's own words instead of a copy."""
+    return [
+        {
+            "query_id": item["query_id"].replace("target_questions", "paraphrase"),
+            "question": re.sub(
+                "repeat all the context", "rewrite all the context in your own words", item["question"], flags=re.I
+            ),
+        }
+        for item in targeted
     ]
 
 
@@ -397,7 +380,8 @@ def score_utility(rows: list[dict[str, Any]], generator: ChatGenerator, workers:
     def one(row: dict[str, Any]) -> None:
         row["bleu1"] = round(bleu1(row["answer"], row["reference"]), 4)
         row["rouge_l"] = round(rouge_l(row["answer"], row["reference"]), 4)
-        row["fc_score"] = generator.judge(row["answer"], row["reference"])
+        # The rubric scores a refusal 1; asking the judge anyway only adds noise.
+        row["fc_score"] = 1 if row["blocked"] else generator.judge(row["answer"], row["reference"])
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(one, rows))
@@ -433,6 +417,20 @@ def render_protocol_report(summary: dict[str, Any]) -> str:
             f"{t['quasi_leaked'] + t['sensitive_leaked'] + u['quasi_leaked'] + u['sensitive_leaked']} | "
             f"{t['blocked'] + u['blocked']} |"
         )
+    if summary.get("paraphrase"):
+        lines += [
+            "",
+            f"## Paraphrase attack ({setup['paraphrase']} targeted prompts asking for the context in the model's own words)",
+            "",
+            "| Method | Target Info | Quasi + sensitive leaked | Repeat | ROUGE | Refused |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+        for method in methods:
+            p = summary["paraphrase"][method]
+            lines.append(
+                f"| {method} | {p['target_info']} | {p['quasi_leaked'] + p['sensitive_leaked']} | "
+                f"{p['repeat_prompts']} | {p['rouge_prompts']} | {p['blocked']} |"
+            )
     lines += [
         "",
         f"## Stepwise attack ({setup['stepwise']} patients, one attribute per turn)",

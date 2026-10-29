@@ -27,6 +27,7 @@ from adaptive_privacy.paper_protocol import (
     ProtocolMethods,
     load_paper_questions,
     load_protocol_data,
+    paraphrase_questions,
     render_protocol_report,
     run_single_turn,
     run_stepwise,
@@ -55,9 +56,11 @@ def main() -> None:
     parser.add_argument("--targeted", type=span, default=(125, 250))
     parser.add_argument("--untargeted", type=span, default=(125, 250))
     parser.add_argument("--stepwise", type=int, default=20)
+    parser.add_argument("--paraphrase", type=int, default=125, help="targeted prompts reused as paraphrase attacks")
     parser.add_argument("--methods", default="naive,paper,ours,hybrid,ours_no_block,hybrid_no_block")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--skip-rewrite", action="store_true", help="use cached paper rewrites only")
+    parser.add_argument("--cache-only", action="store_true", help="no model calls; uncached answers count as failures")
     parser.add_argument(
         "--output-dir", type=Path, default=PROJECT_ROOT / "results" / "adaptive_privacy" / "paper_protocol"
     )
@@ -85,11 +88,16 @@ def main() -> None:
     print(f"{len(documents)} corpus records, {len(utility)} utility questions, {len(rewrites)} rewrites "
           f"({time.time() - started:.0f}s)")
 
-    generator = ChatGenerator(args.base_url, args.model, args.api_key_env, args.output_dir / "generation_cache.jsonl")
+    cache_path = args.output_dir / "generation_cache.jsonl"
+    if args.cache_only:
+        generator = ChatGenerator(args.base_url, args.model, args.api_key_env, cache_path, transport=lambda *_: ("", None))
+    else:
+        generator = ChatGenerator(args.base_url, args.model, args.api_key_env, cache_path)
     protocol = ProtocolMethods(documents, rewrites, load_config(args.config), generator)
     by_id = protocol.documents
     targeted = load_paper_questions("target_questions", *args.targeted)
     untargeted = load_paper_questions("untarget_questions", *args.untargeted)
+    paraphrase = paraphrase_questions(targeted[: args.paraphrase])
     chains = stepwise_chains(documents, args.stepwise)
 
     summary = {
@@ -100,11 +108,13 @@ def main() -> None:
             "paper_rewrites": len(rewrites),
             "targeted": len(targeted),
             "untargeted": len(untargeted),
+            "paraphrase": len(paraphrase),
             "stepwise": len(chains),
             "question_slices": {"targeted": list(args.targeted), "untargeted": list(args.untargeted)},
         },
         "targeted": {},
         "untargeted": {},
+        "paraphrase": {},
         "stepwise": {},
         "utility": {},
     }
@@ -114,11 +124,14 @@ def main() -> None:
         task_rows = {
             "targeted": run_single_turn(protocol, method, targeted, "public", "general_information", args.workers),
             "untargeted": run_single_turn(protocol, method, untargeted, "public", "general_information", args.workers),
+            "paraphrase": run_single_turn(protocol, method, paraphrase, "public", "general_information", args.workers),
             "stepwise": run_stepwise(protocol, method, chains, args.workers),
             "utility": run_single_turn(protocol, method, utility, "patient", "treatment", args.workers),
         }
         summary["targeted"][method] = score_attack(task_rows["targeted"], by_id)
         summary["untargeted"][method] = score_attack(task_rows["untargeted"], by_id)
+        if paraphrase:
+            summary["paraphrase"][method] = score_attack(task_rows["paraphrase"], by_id)
         summary["stepwise"][method] = score_stepwise(task_rows["stepwise"], by_id)
         summary["utility"][method] = score_utility(task_rows["utility"], generator, args.workers)
         for task, items in task_rows.items():
