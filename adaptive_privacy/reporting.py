@@ -50,6 +50,20 @@ def adaptive_breakdown_table(summary: dict[str, Any]) -> list[str]:
     return lines
 
 
+def paraphrase_discussion(summary: dict[str, Any]) -> list[str]:
+    paraphrase = summary.get("paraphrase")
+    if not paraphrase:
+        return []
+
+    def values(method: str) -> int:
+        return paraphrase[method]["quasi_leaked"] + paraphrase[method]["sensitive_leaked"]
+
+    return [
+        f"The copy check uses the same thresholds as the Repeat and ROUGE metrics, so it zeroes them by construction. The paraphrase attack measures what passes it: asked to rewrite the context in its own words, the paper's rewrite leaked {paraphrase['paper']['target_info']} identifiers and {values('paper')} quasi or sensitive values, ours {paraphrase['ours']['target_info']} and {values('ours')} ({paraphrase['ours']['blocked']} refused), and ours without the refusal {paraphrase['ours_no_block']['target_info']} and {values('ours_no_block')} ({paraphrase['ours_no_block']['blocked']} refused).",
+        "",
+    ]
+
+
 def protocol_discussion(summary: dict[str, Any]) -> list[str]:
     attacks, stepwise, utility = (summary["targeted"], summary["untargeted"]), summary["stepwise"], summary["utility"]
     if not {"paper", "ours", "ours_no_block", "hybrid_no_block"} <= set(stepwise):
@@ -74,8 +88,9 @@ def protocol_discussion(summary: dict[str, Any]) -> list[str]:
         "",
         f"On {prompts} of the paper's attack prompts, ours refused {total('ours', 'blocked')} and released {total('ours', 'target_info')} direct identifiers and {total('ours', *leaked)} quasi or sensitive values, against {total('paper', 'target_info')} and {total('paper', *leaked)} for the paper's rewrite, whose answers repeated a retrieved record verbatim {total('paper', 'repeat_prompts')} times. The refusal is a template match: the guard's verbs were added after checking it against all of the paper's attack prompts, so these are not unseen attacks, and Experiment 5 shows how little it catches on unseen attack styles.",
         "",
-        f"With the refusal switched off (`ours_no_block`), answers leaked {total('ours_no_block', 'target_info')} direct identifiers and {total('ours_no_block', *leaked)} quasi or sensitive values but repeated a record verbatim {total('ours_no_block', 'repeat_prompts')} times: the tiers mask identifiers and keep each record's narrative word for word, which the paper rewrites. Serving the paper's rewrite as the high tier (`hybrid_no_block`) gave {total('hybrid_no_block', 'repeat_prompts')} repeats and {total('hybrid_no_block', *leaked)} leaked values.",
+        f"With the refusal switched off (`ours_no_block`), {total('ours_no_block', 'blocked')} answers were still refused by the remaining guards, including an answer-time copy check that refuses answers sharing 10 consecutive words or ROUGE-L > 0.5 with a served record holding private values. The rest leaked {total('ours_no_block', 'target_info')} direct identifiers and {total('ours_no_block', *leaked)} quasi or sensitive values and repeated a record verbatim {total('ours_no_block', 'repeat_prompts')} times. Serving the paper's rewrite as the high tier (`hybrid_no_block`) gave {total('hybrid_no_block', 'repeat_prompts')} repeats and {total('hybrid_no_block', *leaked)} leaked values.",
         "",
+        *paraphrase_discussion(summary),
         f"In the stepwise attack the paper leaked {steps['paper']} target values across {stepwise['paper']['chains']} patients and ours {steps['ours']}; without the refusal the count was {memory}.",
         "",
         f"{verdict}: ours refused {ours['blocked']} of {ours['questions']} patient questions and scored FC {ours['fc_score']} against {paper['fc_score']} for the paper (BLEU-1 {ours['bleu1']} against {paper['bleu1']}, naive RAG FC {utility['naive']['fc_score']}).",
@@ -366,6 +381,7 @@ def generate_final_report(
         "- k-anonymity is computed over the loaded corpus with detector-found quasi-identifiers; in small corpora most records are unique, so the check escalates often.",
         "- The inference attack uses one attacker model and lexical scoring on 22 records; a stronger attacker or semantic judging would find more leakage, not less.",
         "- The head-to-head uses one 8B generator, BM25 retrieval, a self-judged FC score and half of the paper's attack prompts; the context-exfiltration guard was checked against these same prompts during development.",
+        "- The answer-time copy check shares the Repeat and ROUGE metrics' thresholds, so those metrics cannot show what it misses; paraphrased extraction passes it (Ippolito et al., 2023), which only masking limits.",
         "",
         "## Conclusion",
         "",
