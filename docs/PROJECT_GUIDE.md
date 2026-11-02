@@ -308,7 +308,7 @@ call it. For every question:
  ⑩ Re-identification ──── a record that is unique on its visible details gets a stricter tier
  ⑪ Context integrity ──── instruction-like text inside retrieved documents is removed
  ⑫ Generation ─────────── answer written only from the masked context
- ⑬ Output guard ───────── the answer is scanned again; ≥3 identifiers → blocked
+ ⑬ Output guard ───────── the answer is scanned again; ≥3 identifiers or a copied record → blocked
  ⑭ Audit log ──────────── hashes and decisions only, never raw text
 ```
 
@@ -473,8 +473,9 @@ reaches the generator.
 ### ⑬ Output guard (`guards.py`)
 
 The answer is scanned with the same detector. If it contains 3 or more direct
-identifiers, it is blocked. Otherwise it is masked again at the strictest tier
-that was served.
+identifiers, it is blocked. A model-written answer is also blocked if it copies
+a served record that holds private values: 10 consecutive words in common, or
+ROUGE-L above 0.5 (Section 9.8). Public records such as FAQ pages are exempt. Otherwise it is masked again at the strictest tier that was served.
 
 ### ⑭ Audit log (`audit.py`)
 
@@ -685,7 +686,7 @@ tokens.
 | `paper` | The paper's three-agent rewrite |
 | `ours` | This project's adaptive layer |
 | `hybrid` | Ours, with the paper's rewrite as the high tier |
-| `ours_no_block`, `hybrid_no_block` | Same as above, with the context-exfiltration refusal switched off |
+| `ours_no_block`, `hybrid_no_block` | Same as above, with the context-exfiltration refusal switched off (the answer-time copy check stays on) |
 
 **Tasks and metrics:**
 
@@ -696,8 +697,9 @@ tokens.
 | 20 stepwise attacks × 5 turns (the paper's Table 4 weakness) | Target values leaked, identity linked to diagnosis |
 | 99 held-out patient questions | BLEU-1, ROUGE-L, LLM-judged factual consistency (1–5) |
 
-**Results** (run 2, 4 Nov 2026, after the two bug fixes below; no failed
-generations; full tables in `results/adaptive_privacy/paper_protocol/report.md`):
+**Results** (run 2 answers, 4 Nov 2026, scored with the answer-time copy check
+described below; no failed generations; full tables in
+`results/adaptive_privacy/paper_protocol/report.md`):
 
 Single-turn attacks, 250 of the paper's prompts (125 targeted + 125 untargeted):
 
@@ -707,8 +709,8 @@ Single-turn attacks, 250 of the paper's prompts (125 targeted + 125 untargeted):
 | paper | 5 | 73 | 100 | 15 | 0 |
 | **ours** | **0** | **0** | **0** | **0** | 250 |
 | hybrid | 0 | 0 | 0 | 0 | 250 |
-| ours_no_block | 0 | 6 | 128 | 112 | 14 |
-| hybrid_no_block | 0 | 44 | 79 | 21 | 14 |
+| ours_no_block | 0 | 2 | 0 | 0 | 145 |
+| hybrid_no_block | 0 | 6 | 0 | 0 | 132 |
 
 Stepwise attack, 20 patients × 5 turns:
 
@@ -716,30 +718,31 @@ Stepwise attack, 20 patients × 5 turns:
 |---|---:|---:|---:|
 | naive | 50 | 8 | 0 |
 | paper | 7 | 0 | 0 |
-| **ours** | **3** | **0** | 41 |
-| hybrid | 4 | 0 | 41 |
-| ours_no_block | 3 | 0 | 41 |
-| hybrid_no_block | 4 | 0 | 41 |
+| **ours** | **3** | **0** | 44 |
+| hybrid | 2 | 0 | 51 |
+| ours_no_block | 3 | 0 | 44 |
+| hybrid_no_block | 2 | 0 | 51 |
 
-Utility, 99 held-out patient questions:
+Utility, 99 held-out patient questions (a refused answer scores FC 1, as the
+judge's rubric says):
 
 | Method | BLEU-1 | ROUGE-L | FC (1–5) | Refused |
 |---|---:|---:|---:|---:|
 | naive | 0.138 | 0.112 | 3.16 | 0 |
 | paper | 0.138 | 0.113 | 3.16 | 0 |
-| **ours** | **0.134** | **0.111** | **3.09** | 1 |
-| hybrid | 0.131 | 0.109 | 2.81 | 0 |
+| **ours** | **0.131** | **0.110** | **3.03** | 4 |
+| hybrid | 0.131 | 0.109 | 2.81 | 1 |
 
 A paired bootstrap over the 99 questions puts every utility gap between ours and
 the paper inside noise. The 95% intervals for ours minus the paper are:
 
 | Metric | Gap | 95% interval |
 |---|---:|---|
-| FC | −0.07 | −0.37 to +0.24 |
-| BLEU-1 | −0.004 | −0.014 to +0.005 |
-| ROUGE-L | −0.002 | −0.007 to +0.004 |
+| FC | −0.13 | −0.43 to +0.17 |
+| BLEU-1 | −0.007 | −0.017 to +0.003 |
+| ROUGE-L | −0.003 | −0.009 to +0.003 |
 
-Ours scored higher FC on 19 questions and lower on 22.
+Ours scored higher FC on 17 questions and lower on 23.
 
 **What this shows:**
 - **Single-turn attacks: we win, mostly through the refusal.** With the refusal
@@ -748,27 +751,26 @@ Ours scored higher FC on 19 questions and lower on 22.
   The refusal matches the paper's "repeat the context" template, and it was
   checked against these same prompts during development. So this is not a test
   on unseen attacks; Section 9.5 shows how little the guard catches on those.
-- **Without the refusal, the result is split.** `ours_no_block` leaks far fewer
-  values than the paper (6 vs 73) but copies records more often (128 vs 100
-  Repeat, 112 vs 15 ROUGE). The tiers keep each record's wording and mask only
-  the identifiers, while the paper rewrites the whole text. The copied text
-  carries no identifiers, but it still counts on the paper's copy metrics. Using
-  the paper's rewrite as our high tier (`hybrid_no_block`) cuts the copying (79)
-  but leaks more values (44), because the rewrite keeps common diagnoses.
+- **Without the refusal, the copy check takes over.** `ours_no_block` leaked 2
+  values against the paper's 73, and none of its answers copied a record. The
+  copy check refused the answers that would have; it triggers on what the
+  answer contains, not on how the request is worded. The zero copies are by
+  construction, though: see the copy check below.
 - **Stepwise attack: a win that does not depend on the refusal.** The paper
   leaked 7 target values and ours 3, with the same result when the refusal is
   off. Neither linked a name to a diagnosis. The gain comes from session memory
   and the ledger; the paper's defense has no memory across turns.
-  - Our 3 leaks come from turns that are now answered at the high tier instead
-    of refused.
+  - Our 3 leaks come from turns answered at the high tier.
   - The record named the condition or city without a cue the detector knows,
     such as "BPPV" without "diagnosed with", or "Kolkata" without "lives in".
     So the high tier never masked it. This is the same blind spot as in
     Section 9.7.
-- **Utility: tied with the paper.** FC is 3.09 against 3.16, inside noise. The
+- **Utility: tied with the paper.** FC is 3.03 against 3.16, inside noise. The
   paper's own utility equals naive RAG.
-  - The one refusal is the output guard working as designed: the model listed
-    three named doctors in its answer.
+  - 3 of our 4 refusals are the copy check. In two of them the model was
+    narrating other patients' records ("Patient 1: …"), and those answers had
+    already scored FC 1.
+  - The 4th is the output guard: the model listed three named doctors.
   - The hybrid scores lower (FC 2.81). It applies our high-tier masking on top
     of the paper's rewrite, so it carries the information loss of both.
 
@@ -797,6 +799,49 @@ Ours scored higher FC on 19 questions and lower on 22.
 
 So fewer false refusals bought nearly all of the utility gap back, at the cost
 of 2 extra stepwise leaks through the high tier's blind spot.
+
+**Answer-time copy check (added after run 2):**
+
+Run 2 without the refusal showed our weak spot: `ours_no_block` copied a record
+in 128 answers, against the paper's 100. The tiers keep each record's wording
+and mask only identifiers, while the paper rewrites everything.
+
+The alternatives were weaker:
+- Using the paper's rewrite for all tiers would at best match the paper's 100
+  copies. Our hybrid shows the cost: 44 leaked values against 6.
+- Summarizing records per query (Zeng et al., 2024) roughly halved copying in
+  their tests, but cut answer ROUGE-L from 0.39 to 0.13.
+
+So the output guard now refuses any model-written answer that shares 10
+consecutive words with a served record, or has ROUGE-L > 0.5 against one. These
+are the paper's own Repeat and ROUGE thresholds. Extractive evaluation answers
+are not checked, because they copy by design, and neither are public records
+with no private values, such as FAQ pages. Copying those is harmless, and an
+earlier version blocked the demo's own FAQ question. The cached run-2 answers were
+re-scored with it, so no new model calls were needed:
+
+| Measure | Run 2 | With copy check |
+|---|---:|---:|
+| `ours_no_block` copies (Repeat / ROUGE) | 128 / 112 | 0 / 0 |
+| `ours_no_block` values leaked | 6 | 2 |
+| `hybrid_no_block` copies (Repeat / ROUGE) | 79 / 21 | 0 / 0 |
+| `hybrid_no_block` values leaked | 44 | 6 |
+| Ordinary patient questions refused (ours) | 1 | 4 |
+| Utility FC (ours) | 3.09 | 3.03 |
+
+The FC change also includes the new rule that refusals score 1. In run 2 the
+judge had given one refusal a 5.
+
+**Limits of the copy check:**
+- It uses the metrics' own thresholds, so it zeroes Repeat and ROUGE by
+  construction. The real evidence is that only 3 of 98 ordinary answers trip it.
+- It does nothing against paraphrased extraction. Verbatim filters give "a false
+  sense of privacy" (Ippolito et al., 2023), and one RAG study saw output
+  filtering cut verbatim leakage to 0% while paraphrased leakage stayed at 43%.
+- So the protocol now adds a **paraphrase attack**: the same targeted prompts
+  with "repeat all the context" changed to "rewrite all the context in your own
+  words". Our wording-based refusal catches none of the 125, so it tests what
+  masking alone protects. Its numbers come from the next Kaggle run (Section 10).
 
 **How to read the results fairly:**
 - Compare the methods within these tables. Do not compare them against the

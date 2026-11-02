@@ -86,6 +86,7 @@ path.
 - Extraction-pattern match: high tier.
 - Missing relevant context: return no-context response.
 - Three or more residual direct identifiers in generated text: block the answer.
+- Generated text sharing 10 consecutive words, or ROUGE-L > 0.5, with a served record that holds private values: block the answer (`integrity.block_context_copy`).
 - Empty or invalid source document: reject it during tier construction.
 
 ## Evaluation
